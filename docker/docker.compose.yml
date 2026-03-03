@@ -14,9 +14,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Evitamos que el entrypoint ejecute directamente el SQL (lo ejecuta el wrapper)
-      - ../gin-backend/db_script.sql:/docker-entrypoint-initdb.d/db_script.sql.skip:ro
+          # Schema Principal y tablas (sin constraints ni indexes)
+      - ../gin-backend/db_script.sql:/docker-entrypoint-initdb.d/01-db_script.sql.skip:ro
+          # Constraints y relaciones (separado para evitar bloqueos por dependencias)
+      - ../gin-backend/db_constraints.sql:/docker-entrypoint-initdb.d/02-db_constraints.sql.skip:ro
+          # Indexes (separado para evitar bloqueos por dependencias)
+      - ../gin-backend/db_indexes.sql:/docker-entrypoint-initdb.d/03-db_indexes.sql.skip:ro
       # Seed fuera del backend
-      - ./postgresql/seeds/seed.sql:/docker-entrypoint-initdb.d/seed.sql.skip:ro
+      - ./postgresql/seeds/seed.sql:/docker-entrypoint-initdb.d/04-seed.sql.skip:ro
       # Scripts utilitarios (no se autoejecutan, ubicados fuera del initdb)
       - ./postgresql/init-scripts/init_seeding.sh:/usr/local/bin/init_seeding.sh:ro
       - ./postgresql/init-scripts/init_dump.sh:/usr/local/bin/init_dump.sh:ro
