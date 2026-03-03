@@ -15,9 +15,11 @@ DEFAULT_DB="postgres"
 # Password para conexiones no interactuantes
 export PGPASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
 # Montamos el SQL con sufijo .skip para evitar que el entrypoint lo ejecute por defecto
-SCRIPT_PATH="/docker-entrypoint-initdb.d/db_script.sql.skip"
+SCRIPT_PATH="/docker-entrypoint-initdb.d/01-db_script.sql.skip"
+SCHEMA_CONSTRAINTS_PATH="/docker-entrypoint-initdb.d/02-db_constraints.sql.skip"
+SCHEMA_INDEXES_PATH="/docker-entrypoint-initdb.d/03-db_indexes.sql.skip"
 # Seed
-SEED_PATH="/docker-entrypoint-initdb.d/seed.sql.skip"
+SEED_PATH="/docker-entrypoint-initdb.d/04-seed.sql.skip"
 
 # =====================
 # COLORES PARA OUTPUT
