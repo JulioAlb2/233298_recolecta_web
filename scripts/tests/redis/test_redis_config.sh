@@ -4,6 +4,9 @@ set -e
 
 echo "Starting Redis configuration test..."
 
+# Ensure we run from project root so the relative path resolves correctly
+cd "$(dirname "$0")/../../.." || exit 1
+
 CONFIG_FILE="docker/redis/redis.conf"
 
 # Check if the configuration file exists

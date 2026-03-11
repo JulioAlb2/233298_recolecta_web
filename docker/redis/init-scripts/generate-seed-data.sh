@@ -91,7 +91,9 @@ get_route() {
 get_route_colonia() {
     route_colonias="$1"
     point_index="$2"
-    count=$(printf '%s' "$route_colonias" | tr ',' '\n' | wc -l | tr -d ' ')
+    # Use printf '%s\n' to ensure a trailing newline so wc -l counts correctly
+    # even when route_colonias is a single value with no commas (e.g. "7").
+    count=$(printf '%s\n' "$route_colonias" | tr ',' '\n' | wc -l | tr -d ' ')
     pick=$((point_index % count + 1))
     printf '%s' "$route_colonias" | cut -d',' -f"$pick"
 }
