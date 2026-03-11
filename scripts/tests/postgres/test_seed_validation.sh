@@ -34,14 +34,15 @@ MODE="hybrid"
 
 # Tablas mínimas para validación de estructura (espacio-separadas)
 # Añadimos `colonia` y `domicilio` como solicitaste
-MIN_TABLES="schema_version rol usuario camion ruta punto_recoleccion colonia domicilio"
+MIN_TABLES="schema_version rol empleado ciudadano camion ruta punto_recoleccion colonia domicilio"
 
 # Umbrales mínimos por tabla (devuelve número mínimo de filas esperado)
 min_count_for_table() {
   case "$1" in
     schema_version) echo 1 ;; # debe existir registro de versiones
-    rol) echo 1 ;;
-    usuario) echo 2 ;;
+    rol) echo 5 ;;
+    empleado) echo 12 ;;
+    ciudadano) echo 200 ;;
     camion) echo 1 ;;
     ruta|Ruta) echo 1 ;;
     punto_recoleccion) echo 1 ;;
