@@ -93,15 +93,40 @@
                 <span>Nginx</span>
                 <span class="badge success">✓ En línea</span>
             </div>
-            <div class="status-item">
+            <div class="status-item" id="backend-status-item">
                 <span>Backend API</span>
-                <span class="badge pending">⏳ Por configurar</span>
+                <span class="badge pending" id="backend-status-badge">⏳ Verificando...</span>
             </div>
             <div class="status-item">
                 <span>Frontend</span>
                 <span class="badge pending">⏳ En construcción</span>
             </div>
         </div>
+
+        <script>
+        // Verifica el estado del backend
+        function setBackendStatus(state, msg) {
+            const badge = document.getElementById('backend-status-badge');
+            badge.className = 'badge ' + state;
+            badge.textContent = msg;
+        }
+        fetch('/api/health', { method: 'GET' })
+            .then(async res => {
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text.trim().toLowerCase().includes('healthy')) {
+                        setBackendStatus('success', '✓ En línea');
+                    } else {
+                        setBackendStatus('error', '⚠️ Respuesta inesperada');
+                    }
+                } else {
+                    setBackendStatus('error', '❌ Error (' + res.status + ')');
+                }
+            })
+            .catch(() => {
+                setBackendStatus('error', '❌ Sin conexión');
+            });
+        </script>
 
         <p style="font-size: 0.9rem; color: #999;">
             Los servicios básicos están siendo configurados. Por favor, vuelve en breve.
