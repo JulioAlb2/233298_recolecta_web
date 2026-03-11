@@ -7,6 +7,27 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.9.0-alpha - 2026-03-11
+## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
+### Added
+- Configuración de docker compose para entorno productivo y de desarrollo.
+- Configuración de Dockerfile para nginx.
+- Nuevas variables de entorno para configuración de servicios.
+- Integración de revisión healthcheck para servicio backend en frontend placeholder.
+- Aislamiento de servicios redis, postgresql y backend en redes de docker separadas para mayor seguridad en producción.
+- Se exponer backend en puerto 8081 en desarrollo.
+
+
+# 0.8.0-alpha - 2026-03-11
+## Rodrigo Mijangos [Issue #49](https://github.com/RodrigoMijangos/recolecta_web/issues/49)
+### Added
+- Testing de Integridad de datos de redis.
+
+### Changed
+- Seeding de Redis y Seeding de postgresql ahora estan amoldados al nuevo schema.
+- Testing de integridad de datos de redis ahora verifica que los datos en Redis correspondan con los datos en PostgreSQL, asegurando consistencia entre ambos sistemas.
+- Testing rediseñados según el nuevo schema de postgresql.
+
 # 0.7.0-alpha - 2026-01-31
 ## Rodrigo Mijangos [Issue #5](https://github.com/RodrigoMijangos/recolecta_web/issues/5)
 ### Added
