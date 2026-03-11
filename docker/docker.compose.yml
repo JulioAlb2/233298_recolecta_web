@@ -5,8 +5,6 @@ services:
     restart: always
     env_file:
       - ../.env
-    ports:
-      - "${DB_PORT:-5432}:5432"
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
@@ -46,8 +44,6 @@ services:
     restart: always
     env_file:
       - ../.env
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
@@ -62,6 +58,25 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    networks:
+      - app_internal_net
+
+  backend:
+    build:
+      context: ../gin-backend
+      dockerfile: Dockerfile
+    container_name: gin_backend
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      API_PORT: ${BACKEND_PORT:-8080}
+      DB_HOST: postgres_db
+    expose:
+      - "${BACKEND_PORT:-8080}"
+    depends_on:
+      database:
+        condition: service_healthy
     networks:
       - app_internal_net
 
