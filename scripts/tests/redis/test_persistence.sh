@@ -3,7 +3,15 @@ set -e
 
 echo "Starting Redis persistence test..."
 
-PASS="r3d1s_s3cur3_p4ss"
+# Source .env if available so REDIS_PASSWORD is set
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
+
+PASS="${REDIS_PASSWORD:-r3d1s_s3cur3_p4ss}"
 
 # SET
 docker exec -e REDISCLI_AUTH=$PASS redis_cache redis-cli SET test:persist "test-data" > /dev/null

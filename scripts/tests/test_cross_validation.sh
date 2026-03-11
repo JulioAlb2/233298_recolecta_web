@@ -186,7 +186,7 @@ test_redis_connection() {
 get_postgres_user_count() {
     local count
     count=$(postgres_cmd -tAc \
-        "SELECT COUNT(*) FROM usuario WHERE user_id >= $EXPECTED_USER_START AND user_id <= $EXPECTED_USER_END;" \
+        "SELECT COUNT(*) FROM ciudadano WHERE id >= $EXPECTED_USER_START AND id <= $EXPECTED_USER_END;" \
         2>/dev/null || echo "0")
     echo "$count"
 }
@@ -220,7 +220,7 @@ validate_users() {
     for user_id in "${sample_users[@]}"; do
         # Check in Redis
         local redis_user
-        redis_user=$(redis_cmd HEXISTS "user:${user_id}" nombre 2>/dev/null || echo "0")
+        redis_user=$(redis_cmd HEXISTS "user:${user_id}" alias 2>/dev/null || echo "0")
         
         if [ "$redis_user" -ne 1 ]; then
             print_warning "User $user_id not in Redis"
@@ -230,7 +230,7 @@ validate_users() {
         # Check in PostgreSQL
         local pg_user
         pg_user=$(postgres_cmd -tAc \
-            "SELECT COUNT(*) FROM usuario WHERE user_id = $user_id;" \
+            "SELECT COUNT(*) FROM ciudadano WHERE id = $user_id;" \
             2>/dev/null || echo "0")
         
         if [ "$pg_user" -eq 1 ]; then
@@ -247,26 +247,6 @@ validate_users() {
 # Validate colonies consistency
 validate_colonies() {
     print_section "Colonies Consistency Validation"
-    
-    # Get colonies referenced in Redis
-    local redis_colonies
-    redis_colonies=$(redis_cmd EVAL \
-        "local colonies = {} 
-         for i = 1, redis.call('ZCARD', 'users:geo') do 
-           local user_id = redis.call('ZRANGE', 'users:geo', i-1, i-1)[1]
-           if user_id then 
-             local colonia_id = redis.call('HGET', user_id, 'colonia_id')
-             if colonia_id then colonies[colonia_id] = 1 end
-           end
-         end
-         return cjson.encode(colonies)" \
-        0 2>/dev/null || echo "{}")
-    
-    # Get colonies from PostgreSQL
-    local pg_colonies
-    pg_colonies=$(postgres_cmd -tAc \
-        "SELECT DISTINCT colonia_id FROM colonia ORDER BY colonia_id;" \
-        2>/dev/null)
     
     print_info "Validating colonies referenced in Redis..."
     
@@ -285,10 +265,10 @@ validate_colonies() {
         
         ((checked++))
         
-        # Check if colony exists in PostgreSQL
+        # Check if colony exists in PostgreSQL (PK column is 'id')
         local pg_colony
         pg_colony=$(postgres_cmd -tAc \
-            "SELECT COUNT(*) FROM colonia WHERE colonia_id = $colonia_id;" \
+            "SELECT COUNT(*) FROM colonia WHERE id = $colonia_id;" \
             2>/dev/null || echo "0")
         
         if [ "$pg_colony" -eq 1 ]; then
@@ -322,7 +302,7 @@ validate_routes() {
         
         local pg_exists
         pg_exists=$(postgres_cmd -tAc \
-            "SELECT COUNT(*) FROM ruta WHERE ruta_id = $route_id;" \
+            "SELECT COUNT(*) FROM ruta WHERE id = $route_id;" \
             2>/dev/null || echo "0")
         
         if [ "$pg_exists" -eq 1 ]; then
@@ -345,36 +325,36 @@ validate_geolocation() {
     local validation_failed=0
     local checked=0
     local valid=0
-    
-    # Check sample users' coordinates
-    for user_id in {100..110}; do
-        local lat lon
-        lat=$(redis_cmd HGET "user:${user_id}" lat 2>/dev/null)
-        lon=$(redis_cmd HGET "user:${user_id}" lon 2>/dev/null)
-        
-        if [ -z "$lat" ] || [ -z "$lon" ]; then
+
+    # In contract v2.0 coordinates are in the users:geo GEO index, not in user hashes.
+    # GEOPOS returns longitude then latitude (two lines per member via redis-cli).
+    for user_id in 100 101 102 103 104 105 106 107 108 109 110; do
+        local geopos lon lat
+        geopos=$(redis_cmd GEOPOS users:geo "$user_id" 2>/dev/null)
+        lon=$(echo "$geopos" | sed -n '1p')
+        lat=$(echo "$geopos" | sed -n '2p')
+
+        if [ -z "$lon" ] || [ -z "$lat" ] || [ "$lon" = "nil" ] || [ "$lat" = "nil" ]; then
+            print_warning "User $user_id not found in users:geo"
             continue
         fi
-        
-        ((checked++))
-        
-        # Validate lat is between -90 and 90
-        if (( $(echo "$lat > -90 && $lat < 90" | bc -l) )); then
-            # Validate lon is between -180 and 180
-            if (( $(echo "$lon > -180 && $lon < 180" | bc -l) )); then
-                ((valid++))
-            else
-                print_warning "User $user_id has invalid longitude: $lon"
-                validation_failed=1
-            fi
+
+        checked=$((checked + 1))
+
+        if awk -v lat="$lat" -v lon="$lon" \
+            'BEGIN { exit !(lat > -90 && lat < 90 && lon > -180 && lon < 180) }'; then
+            valid=$((valid + 1))
         else
-            print_warning "User $user_id has invalid latitude: $lat"
+            print_warning "User $user_id has invalid coordinates: lat=$lat lon=$lon"
             validation_failed=1
         fi
     done
-    
+
     if [ $checked -gt 0 ]; then
-        print_success "Checked $checked coordinates, $valid valid"
+        print_success "Checked $checked geo positions, $valid valid"
+    else
+        print_warning "No geo positions found for sample users"
+        validation_failed=1
     fi
     
     return $validation_failed

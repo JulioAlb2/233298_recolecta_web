@@ -99,8 +99,9 @@ bash scripts/tests/postgres/test_seed_validation.sh --mode hybrid
 | Tabla | Mínimo | Razón | Volátiles Excluidas |
 |-------|--------|-------|-------------------|
 | `schema_version` | 1 | Registro de aplicación | `applied_at,applied_by` |
-| `usuario` | 2 | Admin + Usuario típico | `password_hash,last_login,updated_at` |
-| `rol` | 1 | Rol base requerido | `updated_at` |
+| `empleado` | 12 | Staff completo | `password,updated_at` |
+| `ciudadano` | 200 | Usuarios de la comunidad | `password,updated_at` |
+| `rol` | 5 | Roles base requeridos | `updated_at` |
 | `camion` | 1 | Al menos 1 vehículo | `updated_at` |
 | `ruta` | 1 | Al menos 1 ruta | `updated_at` |
 | `punto_recoleccion` | 1 | Al menos 1 punto | `updated_at` |
@@ -147,8 +148,8 @@ Valida que el schema (db_script.sql) y seed (seed.sql) fueron aplicados correcta
 **¿Qué hace?**
 1. Calcula SHA256 de `gin-backend/db_script.sql` y `docker/postgresql/seeds/seed.sql` (archivos locales).
 2. Compara checksums registrados en tabla `schema_version` de la BD.
-3. Verifica existencia de tablas mínimas: `schema_version`, `rol`, `usuario`, `camion`, `ruta`, `punto_recoleccion`, `colonia`, `domicilio`.
-4. Verifica umbrales mínimos de filas por tabla (p.ej., `usuario >= 2`).
+3. Verifica existencia de tablas mínimas: `schema_version`, `rol`, `empleado`, `ciudadano`, `camion`, `ruta`, `punto_recoleccion`, `colonia`, `domicilio`.
+4. Verifica umbrales mínimos de filas por tabla (p.ej., `empleado >= 12`, `ciudadano >= 200`).
 5. Ejecuta queries opcionales en `scripts/tests/postgres/seed_checks.sql` (si existe).
 
 **Modos de validación:**
@@ -165,8 +166,9 @@ Valida que el schema (db_script.sql) y seed (seed.sql) fueron aplicados correcta
 min_count_for_table() {
   case "$1" in
     schema_version) echo 1 ;;  # registro de versiones
-    usuario) echo 2 ;;         # admin + usuario
-    camion) echo 1 ;;
+    empleado) echo 12 ;;       # staff completo
+    ciudadano) echo 200 ;;     # usuarios de la comunidad
+    rol) echo 5 ;;
     # ... más tablas
   esac
 }
@@ -177,7 +179,8 @@ min_count_for_table() {
 excluded_cols_for_table() {
   case "$1" in
     schema_version) echo "applied_at,applied_by" ;;
-    usuario) echo "password_hash,last_login,updated_at" ;;
+    empleado) echo "password,updated_at" ;;
+    ciudadano) echo "password,updated_at" ;;
     # ... más columnas volátiles
   esac
 }

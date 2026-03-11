@@ -15,16 +15,20 @@ if [ ! -f "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
-# Verificar healthcheck (aumentar líneas a 15)
-grep -A 15 "redis:" "$COMPOSE_FILE" | grep -q "healthcheck:" || { echo "Error: Healthcheck not found in Redis service."; exit 1; }
+# Extraer el bloque del servicio redis (2 espacios de indentación = nivel de servicio)
+# -A 30 cubre todo el bloque aunque tenga muchos volúmenes
+REDIS_BLOCK=$(grep -A 30 "^  redis:" "$COMPOSE_FILE")
 
-# Verificar test command (simplificado - solo buscar redis-cli PING)
-grep -A 15 "redis:" "$COMPOSE_FILE" | grep -q "redis-cli.*PING" || { echo "Error: Healthcheck PING test not found."; exit 1; }
+# Verificar healthcheck
+echo "$REDIS_BLOCK" | grep -q "healthcheck:" || { echo "Error: Healthcheck not found in Redis service."; exit 1; }
+
+# Verificar test command
+echo "$REDIS_BLOCK" | grep -q "redis-cli.*PING" || { echo "Error: Healthcheck PING test not found."; exit 1; }
 
 # Verificar parámetros
-grep -A 15 "redis:" "$COMPOSE_FILE" | grep -q "interval:" || { echo "Error: Healthcheck interval not found."; exit 1; }
-grep -A 15 "redis:" "$COMPOSE_FILE" | grep -q "timeout:" || { echo "Error: Healthcheck timeout not found."; exit 1; }
-grep -A 15 "redis:" "$COMPOSE_FILE" | grep -q "retries:" || { echo "Error: Healthcheck retries not found."; exit 1; }
+echo "$REDIS_BLOCK" | grep -q "interval:" || { echo "Error: Healthcheck interval not found."; exit 1; }
+echo "$REDIS_BLOCK" | grep -q "timeout:" || { echo "Error: Healthcheck timeout not found."; exit 1; }
+echo "$REDIS_BLOCK" | grep -q "retries:" || { echo "Error: Healthcheck retries not found."; exit 1; }
 
 echo "Redis healthcheck test passed successfully!"
 exit 0

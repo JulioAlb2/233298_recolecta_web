@@ -16,7 +16,7 @@ DB_USER="${POSTGRES_USER:-recolecta}"
 DB_PORT="${POSTGRES_PORT:-5432}"
 DB_HOST="/var/run/postgresql"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
-SEED_PATH="/docker-entrypoint-initdb.d/seed.sql.skip"
+SEED_PATH="/docker-entrypoint-initdb.d/04-seed.sql.skip"
 
 # =====================
 # COLORES PARA OUTPUT
@@ -136,8 +136,10 @@ if [ $? -eq 0 ]; then
     
     # Reporte de datos insertados
     ROL_COUNT=$(check_table_has_data "rol")
+    EMPLOYEE_COUNT=$(check_table_has_data "empleado")
+    CAMION_COUNT=$(check_table_has_data "camion")
     COLONIA_COUNT=$(check_table_has_data "colonia")
-    USUARIO_COUNT=$(check_table_has_data "usuario")
+    USUARIO_COUNT=$(check_table_has_data "ciudadano")
     
     echo ""
     echo -e "${GREEN}========================================${NC}"
@@ -145,7 +147,9 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}========================================${NC}"
     echo "Roles: $ROL_COUNT"
     echo "Colonias: $COLONIA_COUNT"
-    echo "Usuarios: $USUARIO_COUNT"
+    echo "Empleados: $EMPLOYEE_COUNT"
+    echo "Camiones: $CAMION_COUNT"
+    echo "Ciudadanos: $USUARIO_COUNT"
     echo -e "${GREEN}========================================${NC}"
     echo ""
 else

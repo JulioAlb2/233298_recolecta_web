@@ -102,7 +102,8 @@ docker compose -f docker/docker.compose.yml down -v --remove-orphans
 docker system prune -af --volumes
 
 # 🔄 RESET TOTAL (limpieza + rebuild)
-docker compose -f docker/docker.compose.yml down -v --remove-orphans; docker system prune -af --volumes; docker compose -f docker/docker.compose.yml --env-file .env up -d --build
+docker compose -f docker/docker.compose.yml down -v --remove-orphans; 
+docker system prune -af --volumes; docker compose -f docker/docker.compose.yml --env-file .env up -d --build
 ```
 
 **Cuándo usar limpieza completa:**
