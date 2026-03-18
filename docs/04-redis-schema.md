@@ -37,11 +37,12 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields:**
 - `fcm_token` (string)
 - `fcm_status` (string: valid | invalid | expired)
-- `fcm_expiry` (ISO 8601 o epoch)
+- `fcm_created_at` (ISO 8601)
+- `fcm_expires_at` (ISO 8601)
 - `updated_at` (ISO 8601)
 
 **Ejemplo:**
-- `user:100` → { fcm_token: "...", fcm_status: "valid", fcm_expiry: "2026-02-15T00:00:00Z" }
+- `user:100` → { fcm_token: "...", fcm_status: "valid", fcm_expires_at: "2026-03-01T00:00:00Z" }
 
 
 ### 2) Índice geoespacial de usuarios
@@ -79,21 +80,23 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 5) Última ubicación / estado del camión
 
-**Key:** `truck:state:{camion_id}`
+**Key:** `truck:state:{truck_id}`
 **Type:** HASH
 **Fields:**
+- `route_id` (int)
+- `current_point_id` (int)
 - `lat` (float)
 - `lon` (float)
-- `timestamp` (ISO 8601)
-- `state` (WARN | ARRIVAL | DEPARTURE | COMEBACK)
-- `route_id` (int)
+- `state` (INIT | IN_ROUTE | WARN | ARRIVAL | DEPARTURE | COMEBACK)
+- `updated_at` (ISO 8601)
+- `assignment_source` (string)
 
 **TTL:** 24h
 
 
 ### 6) Historial diario de puntos visitados
 
-**Key:** `truck:route:history:{camion_id}:{date}`
+**Key:** `truck:route:history:{truck_id}:{date}`
 **Type:** LIST
 **Value:** `punto_id` en orden visitado
 
@@ -102,7 +105,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 7) Control de notificaciones por estado
 
-**Key:** `notification:sent:{user_id}:{camion_id}:{date}`
+**Key:** `notification:sent:{user_id}:{truck_id}:{date}`
 **Type:** SET
 **Members:** WARN, ARRIVAL, DEPARTURE, COMEBACK
 
@@ -128,7 +131,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields:**
 - `type` (WARN | ARRIVAL | DEPARTURE | COMEBACK)
 - `status` (pending | delivered | failed)
-- `camion_id` (int)
+- `truck_id` (int)
 - `point_id` (int)
 - `timestamp` (ISO 8601)
 
@@ -140,7 +143,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 10) Métricas diarias por camión
 
-**Key:** `metrics:notifications:{camion_id}:{date}`
+**Key:** `metrics:notifications:{truck_id}:{date}`
 **Type:** HASH
 **Fields:**
 - `total_sent`
@@ -160,7 +163,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 El seed actual define:
 - 5 rutas (`ruta_id` 1..5)
 - 25 puntos (`punto_id` 1..25)
-- 5 asignaciones ruta-camión (`camion_id` 1..5)
+- 6 estados de camión (`truck_id` 1..6, 5 asignados a ruta)
 - 200 usuarios ciudadanos (`user_id` 100..299)
 
 **Implicación para Redis:**

@@ -7,7 +7,7 @@ Este documento describe el ciclo de vida de cada tipo de dato, desde su origen h
 ## 1. Flujo de Usuario: Alta y Geocodificación
 
 ### Requisitos previos
-- Usuario registrado en PostgreSQL (tabla `usuario`)
+- Usuario registrado en PostgreSQL (tabla `ciudadano`)
 - Domicilio registrado en PostgreSQL (tabla `domicilio`)
 - Dirección completa disponible
 
@@ -23,7 +23,7 @@ Este documento describe el ciclo de vida de cada tipo de dato, desde su origen h
    - Guardado: En memoria de la app (no en PostgreSQL)
 
 2. **Carga en Redis** (Go)
-   - Ejecuta: `HSET user:{user_id} fcm_token "{token_fcm}" fcm_status "valid" fcm_expiry "2026-02-15T00:00:00Z"`
+   - Ejecuta: `HSET user:{user_id} fcm_token "{token_fcm}" fcm_status "valid" fcm_expires_at "2026-03-01T00:00:00Z"`
    - Ejecuta: `GEOADD users:geo {lon} {lat} "{user_id}"`
 
 3. **Validación**
@@ -40,7 +40,7 @@ Este documento describe el ciclo de vida de cada tipo de dato, desde su origen h
 # Usuario 100 nuevo
 HSET user:100 fcm_token "eJydUMtuwjAM_BXLZ0gsISE4cYEDUi9..." \
               fcm_status "valid" \
-              fcm_expiry "2026-02-15T00:00:00Z" \
+              fcm_expires_at "2026-03-01T00:00:00Z" \
               updated_at "2026-01-30T10:30:00Z"
 
 GEOADD users:geo -87.0739 20.6295 "100"
@@ -55,8 +55,8 @@ GEOPOS users:geo 100
 ## 2. Flujo de Camión: Inicio de Ruta y Estado
 
 ### Requisitos previos
-- Ruta asignada en PostgreSQL (`ruta_camion` con fecha = hoy)
-- Camión asignado conductor en PostgreSQL (`historial_asignacion_camion`)
+- Ruta asignada en PostgreSQL (`registro_asignacion_ruta`)
+- Camión asignado conductor en PostgreSQL (`historial_asignacion`)
 
 ### Proceso: Camión Inicia Ruta
 
@@ -65,8 +65,7 @@ GEOPOS users:geo 100
 **Pasos:**
 
 1. **Go recupera asignación del día**
-   - Query: `SELECT ruta_id FROM ruta_camion WHERE camion_id = 5 AND fecha = TODAY`
-   - Query: `SELECT ruta_id FROM ruta_camion WHERE camion_id = 5 AND fecha = '2026-01-30'`
+   - Query: `SELECT ruta_id FROM registro_asignacion_ruta WHERE camion_id = 5 ORDER BY fecha_asignacion DESC LIMIT 1`
 
 2. **Carga ruta en Redis** (si no está ya)
    - Ejecuta: `RPUSH route:points:1 10 11 12 13 14` (para ruta 1)
@@ -74,7 +73,7 @@ GEOPOS users:geo 100
    - (Repite para puntos 11, 12, 13, 14)
 
 3. **Inicializar estado del camión**
-   - Ejecuta: `HSET truck:state:5 lat 20.6295 lon -87.0739 timestamp "2026-01-30T06:00:00Z" state "INIT" route_id 1`
+   - Ejecuta: `HSET truck:state:5 route_id 1 current_point_id 10 state "IN_ROUTE" lat 20.6295 lon -87.0739 updated_at "2026-01-30T06:00:00Z" assignment_source "registro_asignacion_ruta"`
    - TTL: `EXPIRE truck:state:5 86400` (24 horas)
 
 4. **Inicializar historial del día**
@@ -116,7 +115,7 @@ Camión se mueve por su ruta. App detecta cambios de proximidad (mediante GPS de
 
 2. **Generar notificación**
    - ID: `notification:XXXXXXXXX` (uuid único)
-   - HSET notification:XXXXXXXXX type "WARN" status "pending" camion_id 5 point_id 10 timestamp "2026-01-30T08:15:00Z"
+   - HSET notification:XXXXXXXXX type "WARN" status "pending" truck_id 5 point_id 10 timestamp "2026-01-30T08:15:00Z"
    - TTL: 7 días
 
 3. **Enviar FCM**
@@ -169,7 +168,7 @@ Si por alguna razón el camión vuelve cercano (ej: falla mecánica, vuelta):
 
 ### Idempotencia garantizada
 
-**Clave:** `notification:sent:{user_id}:{camion_id}:{date}`
+**Clave:** `notification:sent:{user_id}:{truck_id}:{date}`
 
 Es un SET. Una vez que agregas "WARN", no se agrega nuevamente. Por lo tanto:
 - Máximo 1 notificación WARN por usuario/camión/día
@@ -197,7 +196,7 @@ Es un SET. Una vez que agregas "WARN", no se agrega nuevamente. Por lo tanto:
    - Ejecuta: `RPUSH truck:route:history:5:2026-01-30 12` (después)
 
 4. **Actualizar último estado**
-   - Ejecuta: `HSET truck:state:5 lat 20.6300 lon -87.0742 timestamp "2026-01-30T09:00:00Z"`
+   - Ejecuta: `HSET truck:state:5 lat 20.6300 lon -87.0742 updated_at "2026-01-30T09:00:00Z"`
 
 ### Consultas del historial
 
@@ -228,7 +227,7 @@ HGETALL truck:state:5
 **Pasos:**
 
 1. **Cargar usuarios de PostgreSQL**
-   - Query: `SELECT user_id FROM usuario WHERE role_id = 5` (ciudadanos)
+   - Query: `SELECT id AS user_id FROM ciudadano` (ciudadanos)
    - Resultado: user_id 100..299
 
 2. **Verificar tokens en Redis**
@@ -238,7 +237,7 @@ HGETALL truck:state:5
       if token == null:
          # Token no existe, solicitará nuevo al abrir app
       else:
-         expiry = HGET user:{user_id} fcm_expiry
+         expiry = HGET user:{user_id} fcm_expires_at
          if expiry < NOW:
             HSET user:{user_id} fcm_status "expired"
          else:
@@ -259,9 +258,9 @@ HGETALL truck:state:5
 Cada notificación enviada actualiza métricas:
 
 ```bash
-HINCRBY metrics:notifications:{camion_id}:{date} total_sent 1
-HINCRBY metrics:notifications:{camion_id}:{date} warn_count 1
-HINCRBY metrics:notifications:{camion_id}:{date} delivery_success 1
+HINCRBY metrics:notifications:{truck_id}:{date} total_sent 1
+HINCRBY metrics:notifications:{truck_id}:{date} warn_count 1
+HINCRBY metrics:notifications:{truck_id}:{date} delivery_success 1
 ```
 
 ### Consultas de métricas
@@ -291,7 +290,7 @@ HGETALL metrics:notifications:5:2026-01-30
 | `truck:state:{id}` | 24h | Estado camión relevante solo hoy |
 | `truck:route:history:{id}:{date}` | 24h | Historial del día |
 | `notification:sent:{u}:{c}:{date}` | 24h | Control diario de duplicidad |
-| `notification:log:{user_id}` | No tiene (pero members con score) | Logs permanentes, pero... |
+| `notification:log:{user_id}` | 7 días | Log temporal para auditoría operativa |
 | `notification:{id}` | 7 días | Detalles de notificación |
 | `metrics:notifications:{c}:{date}` | 7 días | Auditoría de métricas |
 
@@ -304,7 +303,7 @@ DEL truck:state:5
 DEL truck:route:history:5:2026-01-30
 
 # Limpiar historial de usuario 100
-DEL notification:sent:100:*:2026-01-30
+DEL notification:sent:100:1:2026-01-30
 DEL notification:log:100
 ```
 

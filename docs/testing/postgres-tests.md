@@ -110,7 +110,6 @@ bash scripts/tests/postgres/test_seed_validation.sh --mode hybrid
 
 **Para ajustar:** Edita `scripts/tests/postgres/test_seed_validation.sh`:
 - Función `min_count_for_table()` — Umbrales mínimos
-- Función `excluded_cols_for_table()` — Columnas volátiles a excluir del hash
 
 ---
 
@@ -174,18 +173,6 @@ min_count_for_table() {
 }
 ```
 
-**Excluir checksums de update:**
-```bash
-excluded_cols_for_table() {
-  case "$1" in
-    schema_version) echo "applied_at,applied_by" ;;
-    empleado) echo "password,updated_at" ;;
-    ciudadano) echo "password,updated_at" ;;
-    # ... más columnas volátiles
-  esac
-}
-```
-
 **¿Cuándo ejecutar?**
 - Después de `test_healthcheck.sh` (siempre).
 - En CI: antes de ejecutar migraciones/seeds.
@@ -239,17 +226,6 @@ Valida que los datos persisten tras un reinicio intencional del servicio Postgre
 bash scripts/tests/postgres/test_persistence.sh
 ```
 
-**Configuración de exclusiones:**
-```bash
-excluded_cols_for_table() {
-  case "$1" in
-    usuario) echo "password_hash,last_login,updated_at" ;;
-    rol) echo "updated_at" ;;
-    # ... más tablas
-  esac
-}
-```
-
 ---
 
 ## 🎯 Umbrales y Configuración
@@ -258,7 +234,8 @@ excluded_cols_for_table() {
 ```
 schema_version  (control de versiones)
 rol             (permisos/roles)
-usuario         (cuentas; mín. 2: admin + usuario)
+empleado        (cuentas operativas internas)
+ciudadano       (usuarios de la comunidad)
 camion          (flota)
 ruta            (rutas cargables)
 punto_recoleccion (nodos de recolección)
@@ -270,7 +247,8 @@ domicilio       (direcciones)
 | Tabla | Mínimo | Razón |
 |-------|--------|-------|
 | `schema_version` | 1 | Registro de aplicación |
-| `usuario` | 2 | Admin + Usuario típico |
+| `empleado` | 12 | Staff operativo |
+| `ciudadano` | 200 | Usuarios ciudadanos |
 | `rol` | 1 | Rol base requerido |
 | `camion` | 1 | Al menos 1 vehículo |
 | `ruta` | 1 | Al menos 1 ruta |

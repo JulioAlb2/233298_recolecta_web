@@ -132,8 +132,8 @@ docker compose --env-file .env -f docker/docker.compose.yml ps
 - **Credenciales:** desde `.env` (`DB_USER`, `DB_PASSWORD`, `DB_NAME`)
 
 Inicialización automática:
-- `docker/postgresql/init-scripts/00-init-database.sh` — crea schema
-- `docker/postgresql/init-scripts/01-seed-if-empty.sh` — carga datos iniciales
+- `docker/postgresql/init-scripts/init-database.sh` — crea/actualiza schema y registra checksums
+- `docker/postgresql/init-scripts/seed-if-empty.sh` — carga seed condicional y registra checksums
 - Schema version table: `schema_version` (historial de cambios)
 
 ### Redis (6379)
@@ -347,7 +347,7 @@ bash verify-redis.sh redis 6379 redis_dev_pass_456
 | Usuarios | 200 | IDs 100-299 con FCM tokens |
 | Colonias | 8 | Distribuidas en Suchiapa |
 | Rutas | 5 | 5 puntos cada una = 25 total |
-| Comandos Redis | ~3000 | En `docker/redis/seeds/redis-seed.txt` |
+| Comandos Redis | ~3000 | En `docker/redis/seeds/redis-seed_v2_*.txt` y symlink `redis-seed-latest.txt` |
 
 ### Estructura de Scripts
 ```
@@ -368,7 +368,7 @@ redis-cli -h localhost -p 6379
 GEORADIUS users:geo 16.5896 -93.0547 1 km WITHCOORD WITHDIST
 
 # Distancia entre dos usuarios
-GEODIST users:geo user:100 user:101 km
+GEODIST users:geo 100 101 km
 ```
 
 ### Limpieza y Reinicio
