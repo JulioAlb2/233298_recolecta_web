@@ -2,11 +2,18 @@ version: '3.8'
 
 services:
   backend:
-    image: golang:1.21-alpine
+    build: 
+        context: ../gin-backend
+        dockerfile: Dockerfile.dev
+    env_file:
+      - ../.env
+    environment:
+      - FCM_CREDENTIALS_FILE=${FCM_CREDENTIALS_FILE}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
     volumes:
-      - ./:/app
-
-    working_dir: /app
+      - ../gin-backend:/app/gin-backend
+      - ../credentials:/app/credentials
+      - ../credentials:/credentials
 
     # Nota: este compose es opcional para dev local.
     # Si quieres hot-reload con Air, instala air en la imagen o monta el binario.
