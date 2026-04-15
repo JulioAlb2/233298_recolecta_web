@@ -351,6 +351,19 @@ Los clientes móviles deben enviar eventos con contrato versionado:
    - `event_deduplication:{event_hash}` (TTL 30 días)
    - `event_trace:{event_id}` (TTL 30 días)
 
+### Endpoint operativo del backend
+
+El backend expone `POST /api/notifications/events/truck-state` para ejecutar este flujo:
+
+1. Validar contrato (`event_id`, `event_type`, `event_version`, `truck_id`, `occurred_at`, `payload.state_code`).
+2. Calcular `event_hash` determinístico por contenido relevante.
+3. Intentar dedupe en Redis (`event_deduplication:{event_hash}`).
+4. Si es duplicado, responder `deduplicated=true` sin reprocesar.
+5. Si es nuevo:
+   - Resolver regla por `state_code` en `rules:state:{state_code}`.
+   - Persistir `event_trace:{event_id}` y `event_trace:truck:{truck_id}`.
+   - Responder acción resuelta y resultado.
+
 ### Login admin -> token exclusivo de upgrade websocket
 
 1. Admin autentica sesión normal.

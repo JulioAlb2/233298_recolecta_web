@@ -19,6 +19,8 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - `docs/05-data-lifecycle.md` incorpora flujo de contrato versionado de eventos y upgrade seguro a websocket con token exclusivo.
 - `docs/04-redis-schema.md` incorpora la estructura de reglas dinámicas `rules:state:{state_code}` y versionado global `rules:version`.
 - `docs/05-data-lifecycle.md` incorpora el flujo operativo de administración de reglas dinámicas en backend.
+- `docs/04-redis-schema.md` documenta la implementación activa de dedupe/traza (`event_deduplication`, `event_trace`) en backend.
+- `docs/05-data-lifecycle.md` documenta el endpoint operativo `POST /api/notifications/events/truck-state`.
 
 # 0.9.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)

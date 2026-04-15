@@ -174,6 +174,11 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Score:** epoch timestamp  
 **TTL objetivo:** 30 días
 
+**Implementación actual en backend (`issue/10`):**
+- `event_deduplication:{event_hash}` se registra con `HSETNX` por hash de evento y TTL 30 días.
+- `event_trace:{event_id}` guarda `event_hash`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `result`.
+- `event_trace:truck:{truck_id}` indexa eventos por timestamp (ZSET) para auditoría por camión.
+
 ### 12) Sesiones realtime de administrador (websocket)
 
 **Key:** `realtime:server_epoch:current`  
