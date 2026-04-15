@@ -67,10 +67,16 @@ REDIS_PASSWORD=tu_redis_password
 ENVIRONMENT=development
 ```
 
+Si vas a habilitar notificaciones push con Firebase Cloud Messaging, agrega tambien la ruta del archivo de credenciales:
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
+```
+
 **⚠️ Importante:**
 - `.env` debe tener permisos restrictivos (no hacer commit)
 - Usa `.env.example` como referencia
 - En producción, usa gestión de secretos
+- El archivo JSON de credenciales de Firebase no debe vivir dentro del repositorio ni versionarse
 
 > Nota: Docker Compose realiza la interpolación de variables (ej. `${DB_USER}`) al parsear el `docker-compose.yml`. Si tu `.env` está en la raíz y el archivo de Compose está en `docker/`, usa siempre `--env-file .env` al ejecutar `docker compose` (por ejemplo `docker compose --env-file .env -f docker/docker.compose.yml up -d`) para asegurar que las variables se apliquen y evitar warnings. Alternativamente puedes copiar `.env` a `docker/.env` o usar `env_file` en el YAML.
 
@@ -171,7 +177,43 @@ REDIS_PASSWORD=tu_redis_password    # Password
 ### Aplicación
 ```env
 ENVIRONMENT=development             # development | production
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
 ```
+
+### Firebase Cloud Messaging (opcional)
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
+```
+
+Recomendaciones:
+- Descarga la cuenta de servicio de Firebase en una carpeta fuera del repositorio
+- No reutilices credenciales compartidas entre ambientes
+- Verifica que `.gitignore` excluya archivos JSON sensibles
+
+## 🔔 Notificaciones Push: configuración segura
+
+### Desarrollo local
+
+1. Genera una cuenta de servicio en Firebase con permisos para FCM.
+2. Descarga el archivo JSON en una ruta fuera de este repositorio.
+3. Configura `GOOGLE_APPLICATION_CREDENTIALS` en `.env` con la ruta absoluta del archivo.
+4. Reinicia los servicios o el proceso del backend para que lea la nueva variable.
+
+Ejemplo:
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/secure/firebase/recolecta-service-account.json
+```
+
+### Producción
+
+La estrategia recomendada es no copiar credenciales a la imagen ni al repositorio.
+
+- Guarda el `credentials.json` en un gestor externo de secretos, por ejemplo AWS Secrets Manager
+- Concede acceso al secreto mediante IAM al entorno de ejecución
+- Monta el secreto como archivo de solo lectura dentro del contenedor
+- Define `GOOGLE_APPLICATION_CREDENTIALS` con la ruta montada dentro del contenedor, por ejemplo `/run/secrets/firebase_credentials.json`
+
+Esto permite que la aplicación use Application Default Credentials sin hardcodear secretos.
 
 ---
 
