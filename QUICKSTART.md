@@ -36,6 +36,29 @@ cp .env.example .env
 bash scripts/tests/redis/test_seed_integrity.sh
 ```
 
+## 🧪 Pruebas de flujo de usuario (vía Docker)
+
+Ejecuta validaciones como lo haría un usuario real, usando `docker compose exec`:
+
+```bash
+# 1) Asegura backend arriba en modo dev
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml up -d backend
+
+# 2) Corre tests del módulo de notificaciones dentro del contenedor
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exec backend \
+  sh -lc "cd /app && /usr/local/go/bin/go test ./src/notificacion/..."
+
+# 3) Smoke test API de ciudadano (registro + coordenadas) desde host
+# Endpoint: POST /api/ciudadanos/register
+# Endpoint: POST /api/ciudadanos/coordinates (Bearer JWT del registro)
+```
+
+### Hallazgo actual conocido
+
+- El flujo `POST /api/usuarios` puede fallar con:
+  `ERROR: relation "usuario" does not exist (SQLSTATE 42P01)`
+- Este bloqueo es de esquema PostgreSQL en el módulo `usuarios` y no afecta el flujo de `ciudadanos`.
+
 ## 🔑 Credenciales (configurables en .env)
 
 ### PostgreSQL

@@ -15,6 +15,8 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - Se actualiza el puntero del submódulo `gin-backend` con la Fase 7.
 - `docker/docker.compose.dev.yml` fija `working_dir` y `command` de backend para cargar Air desde `/app/.air.toml` en desarrollo.
 - `docker/docker.compose.dev.yml` monta credenciales FCM y propaga variables para inicialización consistente del cliente Firebase en desarrollo.
+- `QUICKSTART.md` incorpora validación de flujo real de usuario (registro ciudadano) y uso de `docker compose exec` para pruebas.
+- `docs/testing/postgres-tests.md` agrega sección de validación funcional API y nota de incidencia conocida para `relation \"usuario\" does not exist`.
 
 # 0.15.0-alpha - 2026-04-15
 ## Rodrigo Mijangos [Issue #14](https://github.com/RodrigoMijangos/recolecta_web/issues/14)
