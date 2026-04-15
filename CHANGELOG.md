@@ -7,6 +7,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.15.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #14](https://github.com/RodrigoMijangos/recolecta_web/issues/14)
+### Changed
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 6 de hardening.
+- Se incorpora versionado por fase para cobertura de pruebas unitarias en servicios Redis de notificación/realtime.
+
 # 0.14.0-alpha - 2026-04-15
 ## Rodrigo Mijangos [Issue #12](https://github.com/RodrigoMijangos/recolecta_web/issues/12)
 ### Changed
