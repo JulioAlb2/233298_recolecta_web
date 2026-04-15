@@ -8,12 +8,16 @@ services:
     command: ["air", "-c", "/app/.air.toml"]
     volumes:
       - ../gin-backend:/app
+      - ../credentials:/credentials:ro
       - go_cache:/go/pkg/mod
     env_file:
       - ../.env
     environment:
       API_PORT: ${BACKEND_PORT:-8080}
       DB_HOST: postgres_db
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      FCM_CREDENTIALS_FILE: ${FCM_CREDENTIALS_FILE:-/credentials/firebase_credentials.json}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
