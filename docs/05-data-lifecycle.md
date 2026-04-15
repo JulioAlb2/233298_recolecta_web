@@ -364,6 +364,10 @@ El backend expone `POST /api/notifications/events/truck-state` para ejecutar est
    - Persistir `event_trace:{event_id}` y `event_trace:truck:{truck_id}`.
    - Responder acción resuelta y resultado.
 
+Para soporte operativo también se exponen:
+- `GET /api/notifications/events/traces/:event_id`
+- `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+
 ### Login admin -> token exclusivo de upgrade websocket
 
 1. Admin autentica sesión normal.
@@ -389,6 +393,7 @@ Además:
 - `POST /api/realtime/ws/upgrade-token` (JWT admin): emite `ws_upgrade_token` one-time.
 - `POST /api/realtime/ws/sessions/consume`: consume token one-time y abre sesión realtime.
 - `POST /api/realtime/ws/sessions/:session_id/heartbeat` (JWT admin): renueva `last_seen_at` y TTL.
+- `GET /api/realtime/ws/sessions/:session_id` (JWT admin): consulta estado actual de sesión.
 - `DELETE /api/realtime/ws/sessions/:session_id` (JWT admin): cierra sesión.
 
 ---

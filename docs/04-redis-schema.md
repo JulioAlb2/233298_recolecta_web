@@ -178,6 +178,9 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 - `event_deduplication:{event_hash}` se registra con `HSETNX` por hash de evento y TTL 30 días.
 - `event_trace:{event_id}` guarda `event_hash`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `result`.
 - `event_trace:truck:{truck_id}` indexa eventos por timestamp (ZSET) para auditoría por camión.
+- Se expone consulta operativa vía API:
+  - `GET /api/notifications/events/traces/:event_id`
+  - `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
 
 ### 12) Sesiones realtime de administrador (websocket)
 
@@ -199,6 +202,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 - `realtime:server_epoch:current` se crea/lee en backend para validar continuidad tras restore.
 - `ws:upgrade:{jti}` almacena token one-time con `used=false` y TTL corto (5 min).
 - `ws:session:{session_id}` almacena sesión activa con heartbeat renovando TTL de 1 hora.
+- Se expone consulta operativa de sesión: `GET /api/realtime/ws/sessions/:session_id`.
 
 ### 13) Motor dinámico de reglas de notificación
 

@@ -7,6 +7,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.14.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #12](https://github.com/RodrigoMijangos/recolecta_web/issues/12)
+### Changed
+- `docs/04-redis-schema.md` incorpora guía de observabilidad para lectura de trazas de eventos y sesiones realtime.
+- `docs/05-data-lifecycle.md` incorpora endpoints de consulta operativa para soporte (`traces` y `session lookup`).
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 5.
+
 # 0.13.0-alpha - 2026-04-15
 ## Rodrigo Mijangos [Issue #11](https://github.com/RodrigoMijangos/recolecta_web/issues/11)
 ### Changed
