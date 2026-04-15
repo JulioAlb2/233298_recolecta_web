@@ -370,3 +370,40 @@ Para evitar que sesiones restauradas desde backup queden válidas:
 Además:
 - Si el admin cierra sesión, la sesión WS se invalida.
 - Si no hay heartbeat por 1 hora, expira `ws:session:{session_id}`.
+
+---
+
+## 9. Flujo de Configuración Dinámica de Reglas (Admin)
+
+### Objetivo
+Permitir cambios de acción, radio y contenido de notificación por estado sin despliegue.
+
+### Endpoints backend
+- `GET /api/notifications/rules`
+- `GET /api/notifications/rules/:state_code`
+- `PUT /api/notifications/rules/:state_code`
+- `DELETE /api/notifications/rules/:state_code`
+
+Los endpoints de reglas usan `JWTAuthMiddleware`.
+
+### Proceso: Upsert de regla
+
+1. Admin envía `PUT /api/notifications/rules/WARN` con payload.
+2. Backend valida:
+   - `state_code` obligatorio (path param).
+   - `action` obligatoria.
+   - `radius_meters >= 0`.
+3. Backend persiste en Redis:
+   - `HSET rules:state:WARN ...`
+   - `INCR rules:version`
+4. Backend responde la regla con versión actual.
+
+### Proceso: Eliminación de regla
+
+1. Admin envía `DELETE /api/notifications/rules/WARN`.
+2. Backend elimina `rules:state:WARN`.
+3. Backend incrementa `rules:version`.
+
+### Consistencia esperada
+- Reglas activas se leen en tiempo real desde Redis.
+- `rules:version` permite invalidar caché en consumidores realtime.

@@ -190,6 +190,18 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields sugeridos:** `admin_id`, `server_epoch`, `last_seen_at`, `connected_at`, `status`  
 **TTL objetivo por inactividad:** 1 hora.
 
+### 13) Motor dinámico de reglas de notificación
+
+**Key:** `rules:state:{state_code}`  
+**Type:** HASH  
+**Fields activos en backend:** `state_code`, `action`, `radius_meters`, `priority`, `enabled`, `template_title`, `template_body`, `version`, `updated_at`.
+
+**Key:** `rules:version`  
+**Type:** STRING  
+**Uso:** contador global incremental para invalidar cachés cuando se crea, actualiza o elimina una regla.
+
+**Convención de escritura:** `state_code` se normaliza a mayúsculas.
+
 ---
 
 ## Relación con el seed de PostgreSQL

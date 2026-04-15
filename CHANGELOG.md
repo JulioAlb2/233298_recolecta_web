@@ -17,6 +17,8 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - Se actualiza el puntero del submódulo `gin-backend` con los cambios de integración FCM.
 - `docs/04-redis-schema.md` incorpora diseño de deduplicación/trazabilidad de eventos y sesiones realtime de administrador.
 - `docs/05-data-lifecycle.md` incorpora flujo de contrato versionado de eventos y upgrade seguro a websocket con token exclusivo.
+- `docs/04-redis-schema.md` incorpora la estructura de reglas dinámicas `rules:state:{state_code}` y versionado global `rules:version`.
+- `docs/05-data-lifecycle.md` incorpora el flujo operativo de administración de reglas dinámicas en backend.
 
 # 0.9.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
