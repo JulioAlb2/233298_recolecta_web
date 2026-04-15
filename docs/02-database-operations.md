@@ -147,10 +147,10 @@ docker compose -f docker/docker.compose.yml --env-file .env exec -T database \
 
 Cuando haces `docker compose up` la **primera vez**:
 
-1. `00-init-database.sh` crea schema y registra `schema_version = 1.0.0`
-2. `01-seed-if-empty.sh` verifica que tabla `rol` está vacía y ejecuta seed
-3. Seed inserta 3 roles (admin, operador, conductor), 2 colonias, 1 usuario admin
-4. Registra `schema_version = 1.0.1`
+1. `init-database.sh` crea schema base y registra checksums en `schema_version`
+2. `seed-if-empty.sh` verifica tabla centinela (`rol`) y ejecuta seed condicional
+3. Seed inserta datos base del entorno PYME (roles, colonias, empleados, ciudadanos, rutas, camiones)
+4. Se registra `script_name`/`type`/`checksum` en `schema_version`
 
 ### Manual re-seed (si eliminaste datos)
 
@@ -170,11 +170,11 @@ docker compose -f docker/docker.compose.yml --env-file .env exec database \
 ```bash
 # Ver versiones aplicadas
 docker compose -f docker/docker.compose.yml --env-file .env exec -T database \
-  psql -U $DB_USER -d $DB_NAME -c "SELECT version, applied_at FROM schema_version ORDER BY version_id;"
+  psql -U $DB_USER -d $DB_NAME -c "SELECT version_id, script_name, type, checksum, applied_at FROM schema_version ORDER BY version_id;"
 
 # Ver datos de roles
 docker compose -f docker/docker.compose.yml --env-file .env exec -T database \
-  psql -U $DB_USER -d $DB_NAME -c "SELECT role_id, nombre FROM rol;"
+  psql -U $DB_USER -d $DB_NAME -c "SELECT id, nombre FROM rol ORDER BY id;"
 ```
 
 ---
@@ -299,8 +299,8 @@ docker compose -f docker/docker.compose.yml --env-file .env exec database \
 
 ### Checklist post-seed
 
-- [ ] Versión 1.0.1 registrada: `psql -U <user> -d <name> -c "SELECT version FROM schema_version WHERE version='1.0.1';"`
-- [ ] Roles existen: `psql -U <user> -d <name> -c "SELECT COUNT(*) FROM rol;"` (debería ser 3)
+- [ ] Checksums registrados: `psql -U <user> -d <name> -c "SELECT script_name,type,checksum FROM schema_version;"`
+- [ ] Roles existen: `psql -U <user> -d <name> -c "SELECT COUNT(*) FROM rol;"` (debería ser 5)
 - [ ] Datos no duplicados (re-seed): ejecutar seed 2 veces y validar COUNT igual
 
 ---
@@ -332,7 +332,7 @@ bash scripts/tests/postgres/test_persistence.sh
 
 **Tablas validadas:**
 - `schema_version` (checksums de schema/seed)
-- `rol`, `usuario` (mínimo 1 y 2 filas respectivamente)
+- `rol`, `empleado`, `ciudadano` (mínimos definidos en suite)
 - `camion`, `ruta`, `punto_recoleccion`, `colonia`, `domicilio` (mínimo 1 cada una)
 
 ---
@@ -365,8 +365,8 @@ Cuando escales a producción/cloud:
 - Scripts en: `docker/postgresql/init-scripts/`
   - `init_dump.sh` — crea dump
   - `init_seeding.sh` — re-seed manual
-  - `00-init-database.sh` — schema init
-  - `01-seed-if-empty.sh` — seed automático
+  - `init-database.sh` — schema init + registro de checksums
+  - `seed-if-empty.sh` — seed automático condicional
 - Schema definition: `gin-backend/db_script.sql`
 - Seed data: `docker/postgresql/seeds/seed.sql`
 

@@ -70,10 +70,11 @@ Notificación COMEBACK: "El recolector necesita pasar nuevamente por tu punto"
 
 ### Estado Actual del Camión
 ```redis
-HGET truck:1:state ruta_id    # ¿Qué ruta está operando?
-HGET truck:1:state punto_id_actual  # ¿En qué punto está?
-HGET truck:1:state lat, lon   # Ubicación exacta en tiempo real
-HGET truck:1:state last_update  # Última actualización
+HGET truck:state:1 route_id         # ¿Qué ruta está operando?
+HGET truck:state:1 current_point_id # ¿En qué punto está?
+HGET truck:state:1 lat              # Latitud
+HGET truck:state:1 lon              # Longitud
+HGET truck:state:1 updated_at       # Última actualización
 ```
 
 ### Historial de Vaciados
@@ -107,13 +108,13 @@ HGET user:100 fcm_expires_at # Cuando expira
 
 ### Contador de Notificaciones
 ```redis
-HINCRBY notification:metrics total_sent 1        # Total enviadas
-HINCRBY notification:metrics warn_count 1        # Total WARN
-HINCRBY notification:metrics arrival_count 1     # Total ARRIVAL
-HINCRBY notification:metrics departure_count 1   # Total DEPARTURE
-HINCRBY notification:metrics comeback_count 1    # Total COMEBACK
-HINCRBY notification:metrics fcm_success 1       # Entregadas
-HINCRBY notification:metrics fcm_failed 1        # No entregadas
+HINCRBY metrics:notifications:1:2026-01-30 total_sent 1
+HINCRBY metrics:notifications:1:2026-01-30 warn_count 1
+HINCRBY metrics:notifications:1:2026-01-30 arrival_count 1
+HINCRBY metrics:notifications:1:2026-01-30 departure_count 1
+HINCRBY metrics:notifications:1:2026-01-30 comeback_count 1
+HINCRBY metrics:notifications:1:2026-01-30 delivery_success 1
+HINCRBY metrics:notifications:1:2026-01-30 delivery_failed 1
 ```
 
 ### Dashboard Potencial
@@ -137,19 +138,19 @@ Notificaciones Enviadas Hoy:
         Ruta 1 inicia operaciones
 
 08:25 - WARN: Camión a 200m de usuario
-        Redis: SADD notification:sent:150:1:2025-01-30:WARN "1"
+  Redis: SADD notification:sent:150:1:2025-01-30 "WARN"
         FCM: "Recolección en 2 minutos"
 
 08:27 - ARRIVAL: Camión llega al punto
-        Redis: SADD notification:sent:150:1:2025-01-30:ARRIVAL "1"
+  Redis: SADD notification:sent:150:1:2025-01-30 "ARRIVAL"
         FCM: "Recolección iniciada"
 
 08:30 - DEPARTURE: Camión se aleja 200m
-        Redis: SADD notification:sent:150:1:2025-01-30:DEPARTURE "1"
+  Redis: SADD notification:sent:150:1:2025-01-30 "DEPARTURE"
         FCM: "Recolección completada"
 
 14:00 - COMEBACK: Ruta devuelve (urgencia)
-        Redis: SADD notification:sent:150:1:2025-01-30:COMEBACK "1"
+  Redis: SADD notification:sent:150:1:2025-01-30 "COMEBACK"
         FCM: "Recolección adicional disponible"
 
 Resultado: Máximo 4 notificaciones ese día
@@ -180,7 +181,7 @@ Backend puede:
 
 ```
 Query: Métricas del día
-Redis: HGETALL notification:metrics
+Redis: HGETALL metrics:notifications:1:2026-01-30
 
 Resultado:
   total_sent: 1,247
@@ -237,7 +238,7 @@ GEORADIUS points:ruta:4 16.5696 -93.0447 2 km
 ### Historial de Movimiento
 ```
 ¿Dónde estuvo el camión 1 en las últimas 24h?
-LRANGE truck:1:history:2025-01-30 0 -1
+LRANGE truck:route:history:1:2026-01-30 0 -1
 
 Ejemplo de datos:
   08:00 - punto:1 (completado)
@@ -254,12 +255,12 @@ El backend puede implementar endpoints:
 
 ### `POST /api/notifications/check`
 ```
-Entrada: {user_id: 100, camion_id: 1, tipo: "WARN"}
+Entrada: {user_id: 100, truck_id: 1, tipo: "WARN"}
 Proceso:
-  1. SADD notification:sent:{user_id}:{camion_id}:{date}:{tipo}
+  1. SADD notification:sent:{user_id}:{truck_id}:{date} {tipo}
   2. Si es nuevo: HGET user:{user_id} fcm_token
   3. Enviar a FCM
-  4. HINCRBY notification:metrics warn_count 1
+  4. HINCRBY metrics:notifications:{truck_id}:{date} warn_count 1
 Salida: {success: true, token_status: "valid"}
 ```
 
@@ -281,7 +282,7 @@ Salida: [
 ```
 Entrada: Fecha de hoy
 Proceso:
-  1. HGETALL notification:metrics
+  1. HGETALL metrics:notifications:{truck_id}:{date}
   2. Calcular porcentaje de éxito
   3. Comparar con histórico
 Salida: {
@@ -298,8 +299,7 @@ Salida: {
 
 - [04-redis-schema.md](04-redis-schema.md) - Esquema de datos
 - [05-data-lifecycle.md](05-data-lifecycle.md) - Flujos de datos
-- [docker/redis/README.md](../docker/redis/README.md) - Scripts de generación
-- [docker/redis/QUICKSTART.md](../docker/redis/QUICKSTART.md) - Inicio rápido
+- [testing/redis-tests.md](testing/redis-tests.md) - Suite de pruebas Redis
 
 ---
 

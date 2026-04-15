@@ -7,6 +7,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.10.0-alpha - 2026-04-15
+## Rodrigo Mijangos [PR #52](https://github.com/RodrigoMijangos/recolecta_web/pull/52)
+### Changed
+- `docker/docker.compose.dev.yml` ahora carga `.env` y propaga variables FCM al contenedor backend.
+- `docs/01-setup-local.md` documenta la configuración segura de credenciales Firebase para desarrollo y producción.
+- `.env.example` incorpora `GOOGLE_APPLICATION_CREDENTIALS` como variable de referencia para FCM.
+- `.gitignore` se ajusta para evitar versionar credenciales y la carpeta `/credentials`.
+- Se actualiza el puntero del submódulo `gin-backend` con los cambios de integración FCM.
+
 # 0.9.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
 ### Added
@@ -17,6 +26,8 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - Aislamiento de servicios redis, postgresql y backend en redes de docker separadas para mayor seguridad en producción.
 - Se exponer backend en puerto 8081 en desarrollo.
 
+### Changed
+- Documentación general actualizada para reflejar cambios en configuración de servicios y uso de docker compose.
 
 # 0.8.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #49](https://github.com/RodrigoMijangos/recolecta_web/issues/49)
