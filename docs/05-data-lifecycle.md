@@ -384,6 +384,13 @@ Además:
 - Si el admin cierra sesión, la sesión WS se invalida.
 - Si no hay heartbeat por 1 hora, expira `ws:session:{session_id}`.
 
+### Endpoints operativos del backend (fase de sesión realtime)
+
+- `POST /api/realtime/ws/upgrade-token` (JWT admin): emite `ws_upgrade_token` one-time.
+- `POST /api/realtime/ws/sessions/consume`: consume token one-time y abre sesión realtime.
+- `POST /api/realtime/ws/sessions/:session_id/heartbeat` (JWT admin): renueva `last_seen_at` y TTL.
+- `DELETE /api/realtime/ws/sessions/:session_id` (JWT admin): cierra sesión.
+
 ---
 
 ## 9. Flujo de Configuración Dinámica de Reglas (Admin)

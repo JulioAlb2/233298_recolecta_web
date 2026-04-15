@@ -195,6 +195,11 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields sugeridos:** `admin_id`, `server_epoch`, `last_seen_at`, `connected_at`, `status`  
 **TTL objetivo por inactividad:** 1 hora.
 
+**Implementación actual en backend (`issue/11`):**
+- `realtime:server_epoch:current` se crea/lee en backend para validar continuidad tras restore.
+- `ws:upgrade:{jti}` almacena token one-time con `used=false` y TTL corto (5 min).
+- `ws:session:{session_id}` almacena sesión activa con heartbeat renovando TTL de 1 hora.
+
 ### 13) Motor dinámico de reglas de notificación
 
 **Key:** `rules:state:{state_code}`  

@@ -7,6 +7,27 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.13.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #11](https://github.com/RodrigoMijangos/recolecta_web/issues/11)
+### Changed
+- `docs/04-redis-schema.md` documenta la implementación operativa de sesiones realtime (`realtime:server_epoch:current`, `ws:upgrade:*`, `ws:session:*`).
+- `docs/05-data-lifecycle.md` incorpora flujo de emisión/consumo de token exclusivo de upgrade y ciclo de sesión realtime.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 4.
+
+# 0.12.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #10](https://github.com/RodrigoMijangos/recolecta_web/issues/10)
+### Changed
+- `docs/04-redis-schema.md` documenta la implementación activa de dedupe/traza (`event_deduplication`, `event_trace`) en backend.
+- `docs/05-data-lifecycle.md` documenta el endpoint operativo `POST /api/notifications/events/truck-state`.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 3.
+
+# 0.11.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #9](https://github.com/RodrigoMijangos/recolecta_web/issues/9)
+### Changed
+- `docs/04-redis-schema.md` incorpora la estructura de reglas dinámicas `rules:state:{state_code}` y versionado global `rules:version`.
+- `docs/05-data-lifecycle.md` incorpora el flujo operativo de administración de reglas dinámicas en backend.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 2.
+
 # 0.10.0-alpha - 2026-04-15
 ## Rodrigo Mijangos [PR #52](https://github.com/RodrigoMijangos/recolecta_web/pull/52)
 ### Changed
@@ -17,10 +38,6 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - Se actualiza el puntero del submódulo `gin-backend` con los cambios de integración FCM.
 - `docs/04-redis-schema.md` incorpora diseño de deduplicación/trazabilidad de eventos y sesiones realtime de administrador.
 - `docs/05-data-lifecycle.md` incorpora flujo de contrato versionado de eventos y upgrade seguro a websocket con token exclusivo.
-- `docs/04-redis-schema.md` incorpora la estructura de reglas dinámicas `rules:state:{state_code}` y versionado global `rules:version`.
-- `docs/05-data-lifecycle.md` incorpora el flujo operativo de administración de reglas dinámicas en backend.
-- `docs/04-redis-schema.md` documenta la implementación activa de dedupe/traza (`event_deduplication`, `event_trace`) en backend.
-- `docs/05-data-lifecycle.md` documenta el endpoint operativo `POST /api/notifications/events/truck-state`.
 
 # 0.9.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
