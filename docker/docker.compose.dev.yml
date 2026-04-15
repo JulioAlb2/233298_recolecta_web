@@ -1,20 +1,26 @@
-version: '3.8'
-
 services:
   backend:
-    build: 
-        context: ../gin-backend
-        dockerfile: Dockerfile.dev
+    build:
+      context: ../gin-backend
+      dockerfile: Dockerfile.dev
+    container_name: gin_backend_dev
+    volumes:
+      - ../gin-backend:/app
+      - go_cache:/go/pkg/mod
     env_file:
       - ../.env
     environment:
-      - FCM_CREDENTIALS_FILE=${FCM_CREDENTIALS_FILE}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
-    volumes:
-      - ../gin-backend:/app/gin-backend
-      - ../credentials:/app/credentials
-      - ../credentials:/credentials
+      API_PORT: ${BACKEND_PORT:-8080}
+      DB_HOST: postgres_db
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      app_internal_net:
+        aliases:
+          - gin_backend    # Alias para que Nginx lo resuelva
 
-    # Nota: este compose es opcional para dev local.
-    # Si quieres hot-reload con Air, instala air en la imagen o monta el binario.
-    # command: air
+volumes:
+  go_cache:
