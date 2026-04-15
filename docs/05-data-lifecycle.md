@@ -317,3 +317,56 @@ DEL notification:log:100
 4. **TTL:** Datos temporales con expiración automática
 5. **Métricas:** Se actualizan con cada notificación
 6. **Validación:** Tokens FCM verificados en startup y en cada rechazo
+
+---
+
+## 8. Flujo de Contrato de Evento + Canal Realtime Admin
+
+### Contrato server-owned para eventos de camión
+
+Los clientes móviles deben enviar eventos con contrato versionado:
+
+```json
+{
+  "event_id": "evt_01JXYZ...",
+  "event_type": "TRUCK_STATE_CHANGED",
+  "event_version": "v1",
+  "truck_id": 5,
+  "occurred_at": "2026-04-15T11:45:00Z",
+  "payload": {
+    "state_code": "ARRIVAL",
+    "point_id": 10,
+    "lat": 20.6300,
+    "lon": -87.0742
+  }
+}
+```
+
+### Dedupe + trazabilidad (Redis-first)
+
+1. Resolver hash de deduplicación por contenido del evento.
+2. Revisar `event_deduplication:{event_hash}`.
+3. Si existe, no reprocesar.
+4. Si no existe, procesar regla y persistir:
+   - `event_deduplication:{event_hash}` (TTL 30 días)
+   - `event_trace:{event_id}` (TTL 30 días)
+
+### Login admin -> token exclusivo de upgrade websocket
+
+1. Admin autentica sesión normal.
+2. Backend emite token exclusivo de upgrade (`ws_upgrade_token`).
+3. Backend guarda claim en `ws:upgrade:{jti}` con expiración corta.
+4. Handshake websocket solo acepta ese token exclusivo (no cualquier bearer).
+
+### Sesión viva y recuperación tras backup/restore
+
+Para evitar que sesiones restauradas desde backup queden válidas:
+
+1. Backend define `realtime:server_epoch:current` en cada arranque.
+2. Claims/sesiones WS guardan `server_epoch`.
+3. En handshake y heartbeat se valida coincidencia de epoch.
+4. Si no coincide, se rechaza la conexión.
+
+Además:
+- Si el admin cierra sesión, la sesión WS se invalida.
+- Si no hay heartbeat por 1 hora, expira `ws:session:{session_id}`.

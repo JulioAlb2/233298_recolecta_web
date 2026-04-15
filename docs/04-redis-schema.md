@@ -156,6 +156,40 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 **TTL:** 7 días
 
+### 11) Dedupe y trazabilidad de eventos (fase de orquestación)
+
+**Key:** `event_deduplication:{event_hash}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_id`, `event_type`, `truck_id`, `processed_at`, `result`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:{event_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_version`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `created_at`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:truck:{truck_id}`  
+**Type:** SORTED SET  
+**Member:** `event_id`  
+**Score:** epoch timestamp  
+**TTL objetivo:** 30 días
+
+### 12) Sesiones realtime de administrador (websocket)
+
+**Key:** `realtime:server_epoch:current`  
+**Type:** STRING  
+**Uso:** invalidar sesiones/tokens restaurados desde backup anterior.
+
+**Key:** `ws:upgrade:{jti}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `session_id`, `server_epoch`, `issued_at`, `expires_at`, `used`  
+**TTL recomendado:** corto (ej. 5 minutos).
+
+**Key:** `ws:session:{session_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `server_epoch`, `last_seen_at`, `connected_at`, `status`  
+**TTL objetivo por inactividad:** 1 hora.
+
 ---
 
 ## Relación con el seed de PostgreSQL

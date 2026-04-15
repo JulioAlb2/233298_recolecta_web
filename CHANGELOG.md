@@ -15,6 +15,8 @@ Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-chang
 - `.env.example` incorpora `GOOGLE_APPLICATION_CREDENTIALS` como variable de referencia para FCM.
 - `.gitignore` se ajusta para evitar versionar credenciales y la carpeta `/credentials`.
 - Se actualiza el puntero del submódulo `gin-backend` con los cambios de integración FCM.
+- `docs/04-redis-schema.md` incorpora diseño de deduplicación/trazabilidad de eventos y sesiones realtime de administrador.
+- `docs/05-data-lifecycle.md` incorpora flujo de contrato versionado de eventos y upgrade seguro a websocket con token exclusivo.
 
 # 0.9.0-alpha - 2026-03-11
 ## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
