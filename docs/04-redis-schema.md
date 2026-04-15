@@ -181,6 +181,8 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 - Se expone consulta operativa vía API:
   - `GET /api/notifications/events/traces/:event_id`
   - `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+- Se expone resumen operativo para monitoreo admin:
+  - `GET /api/notifications/observability/:truck_id` (incluye total de trazas y sesiones WS activas).
 
 ### 12) Sesiones realtime de administrador (websocket)
 

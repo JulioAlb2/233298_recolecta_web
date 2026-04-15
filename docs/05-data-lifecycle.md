@@ -367,6 +367,7 @@ El backend expone `POST /api/notifications/events/truck-state` para ejecutar est
 Para soporte operativo también se exponen:
 - `GET /api/notifications/events/traces/:event_id`
 - `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+- `GET /api/notifications/observability/:truck_id` (JWT admin) para vista resumida de trazas y sesiones activas.
 
 ### Login admin -> token exclusivo de upgrade websocket
 

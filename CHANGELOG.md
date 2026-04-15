@@ -7,6 +7,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.16.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #16](https://github.com/RodrigoMijangos/recolecta_web/issues/16)
+### Changed
+- `docs/05-data-lifecycle.md` incorpora endpoint de resumen operativo `GET /api/notifications/observability/:truck_id`.
+- `docs/04-redis-schema.md` incorpora guía de métricas resumidas a partir de trazas y sesiones activas.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 7.
+
 # 0.15.0-alpha - 2026-04-15
 ## Rodrigo Mijangos [Issue #14](https://github.com/RodrigoMijangos/recolecta_web/issues/14)
 ### Changed
