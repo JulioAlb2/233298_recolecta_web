@@ -4,6 +4,8 @@ services:
       context: ../gin-backend
       dockerfile: Dockerfile.dev
     container_name: gin_backend_dev
+    working_dir: /app
+    command: ["air", "-c", "/app/.air.toml"]
     volumes:
       - ../gin-backend:/app
       - go_cache:/go/pkg/mod
