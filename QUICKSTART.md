@@ -103,6 +103,43 @@ docker compose -f docker/docker.compose.yml exec database psql -U <usuario> -d <
 docker compose -f docker/docker.compose.yml exec redis sh -c 'REDISCLI_AUTH=<tu_contraseña_redis> redis-cli PING'
 ```
 
+## 🌐 Exponer la API localmente con ngrok (para pruebas compartidas)
+
+Cada desarrollador puede exponer su entorno local con una URL pública usando ngrok — sin depender de un servidor compartido.
+
+### 1. Obtener el authtoken
+
+1. Crear cuenta gratis en https://ngrok.com
+2. Copiar el authtoken desde el dashboard
+
+### 2. Configurar en `.env`
+
+```env
+NGROK_AUTHTOKEN=tu_token_aqui
+```
+
+### 3. Levantar el stack con ngrok
+
+```bash
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env up -d
+```
+
+ngrok se levanta automáticamente como servicio del compose y apunta al nginx (puerto 80).
+
+### 4. Obtener la URL pública
+
+```bash
+# Ver la URL asignada en los logs
+docker logs ngrok_tunnel
+
+# O abrir el panel web de ngrok
+# http://localhost:4040
+```
+
+La URL será algo como `https://abc123.ngrok-free.app` — compártela con tu equipo para que consuman la API directamente.
+
+> **Nota:** Con la cuenta gratuita de ngrok la URL cambia cada vez que reinicias el contenedor. Para una URL fija necesitas cuenta de pago.
+
 ## 📚 Documentación Completa
 
 - [README.md](README.md) - Guía completa del proyecto
