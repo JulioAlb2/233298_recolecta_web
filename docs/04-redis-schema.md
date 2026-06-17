@@ -156,6 +156,68 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 **TTL:** 7 días
 
+### 11) Dedupe y trazabilidad de eventos (fase de orquestación)
+
+**Key:** `event_deduplication:{event_hash}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_id`, `event_type`, `truck_id`, `processed_at`, `result`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:{event_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_version`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `created_at`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:truck:{truck_id}`  
+**Type:** SORTED SET  
+**Member:** `event_id`  
+**Score:** epoch timestamp  
+**TTL objetivo:** 30 días
+
+**Implementación actual en backend (`issue/10`):**
+- `event_deduplication:{event_hash}` se registra con `HSETNX` por hash de evento y TTL 30 días.
+- `event_trace:{event_id}` guarda `event_hash`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `result`.
+- `event_trace:truck:{truck_id}` indexa eventos por timestamp (ZSET) para auditoría por camión.
+- Se expone consulta operativa vía API:
+  - `GET /api/notifications/events/traces/:event_id`
+  - `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+- Se expone resumen operativo para monitoreo admin:
+  - `GET /api/notifications/observability/:truck_id` (incluye total de trazas y sesiones WS activas).
+
+### 12) Sesiones realtime de administrador (websocket)
+
+**Key:** `realtime:server_epoch:current`  
+**Type:** STRING  
+**Uso:** invalidar sesiones/tokens restaurados desde backup anterior.
+
+**Key:** `ws:upgrade:{jti}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `session_id`, `server_epoch`, `issued_at`, `expires_at`, `used`  
+**TTL recomendado:** corto (ej. 5 minutos).
+
+**Key:** `ws:session:{session_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `server_epoch`, `last_seen_at`, `connected_at`, `status`  
+**TTL objetivo por inactividad:** 1 hora.
+
+**Implementación actual en backend (`issue/11`):**
+- `realtime:server_epoch:current` se crea/lee en backend para validar continuidad tras restore.
+- `ws:upgrade:{jti}` almacena token one-time con `used=false` y TTL corto (5 min).
+- `ws:session:{session_id}` almacena sesión activa con heartbeat renovando TTL de 1 hora.
+- Se expone consulta operativa de sesión: `GET /api/realtime/ws/sessions/:session_id`.
+
+### 13) Motor dinámico de reglas de notificación
+
+**Key:** `rules:state:{state_code}`  
+**Type:** HASH  
+**Fields activos en backend:** `state_code`, `action`, `radius_meters`, `priority`, `enabled`, `template_title`, `template_body`, `version`, `updated_at`.
+
+**Key:** `rules:version`  
+**Type:** STRING  
+**Uso:** contador global incremental para invalidar cachés cuando se crea, actualiza o elimina una regla.
+
+**Convención de escritura:** `state_code` se normaliza a mayúsculas.
+
 ---
 
 ## Relación con el seed de PostgreSQL

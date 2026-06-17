@@ -1,3 +1,5 @@
+name: recolecta-stag-env
+
 services:
   database:
     image: postgres:16-alpine

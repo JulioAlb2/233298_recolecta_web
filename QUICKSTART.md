@@ -36,6 +36,29 @@ cp .env.example .env
 bash scripts/tests/redis/test_seed_integrity.sh
 ```
 
+## 🧪 Pruebas de flujo de usuario (vía Docker)
+
+Ejecuta validaciones como lo haría un usuario real, usando `docker compose exec`:
+
+```bash
+# 1) Asegura backend arriba en modo dev
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml up -d backend
+
+# 2) Corre tests del módulo de notificaciones dentro del contenedor
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exec backend \
+  sh -lc "cd /app && /usr/local/go/bin/go test ./src/notificacion/..."
+
+# 3) Smoke test API de ciudadano (registro + coordenadas) desde host
+# Endpoint: POST /api/ciudadanos/register
+# Endpoint: POST /api/ciudadanos/coordinates (Bearer JWT del registro)
+```
+
+### Hallazgo actual conocido
+
+- El flujo `POST /api/usuarios` puede fallar con:
+  `ERROR: relation "usuario" does not exist (SQLSTATE 42P01)`
+- Este bloqueo es de esquema PostgreSQL en el módulo `usuarios` y no afecta el flujo de `ciudadanos`.
+
 ## 🔑 Credenciales (configurables en .env)
 
 ### PostgreSQL
@@ -79,6 +102,43 @@ docker compose -f docker/docker.compose.yml exec database psql -U <usuario> -d <
 # Redis CLI (usa tu REDIS_PASSWORD)
 docker compose -f docker/docker.compose.yml exec redis sh -c 'REDISCLI_AUTH=<tu_contraseña_redis> redis-cli PING'
 ```
+
+## 🌐 Exponer la API localmente con ngrok (para pruebas compartidas)
+
+Cada desarrollador puede exponer su entorno local con una URL pública usando ngrok — sin depender de un servidor compartido.
+
+### 1. Obtener el authtoken
+
+1. Crear cuenta gratis en https://ngrok.com
+2. Copiar el authtoken desde el dashboard
+
+### 2. Configurar en `.env`
+
+```env
+NGROK_AUTHTOKEN=tu_token_aqui
+```
+
+### 3. Levantar el stack con ngrok
+
+```bash
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env up -d
+```
+
+ngrok se levanta automáticamente como servicio del compose y apunta al nginx (puerto 80).
+
+### 4. Obtener la URL pública
+
+```bash
+# Ver la URL asignada en los logs
+docker logs ngrok_tunnel
+
+# O abrir el panel web de ngrok
+# http://localhost:4040
+```
+
+La URL será algo como `https://abc123.ngrok-free.app` — compártela con tu equipo para que consuman la API directamente.
+
+> **Nota:** Con la cuenta gratuita de ngrok la URL cambia cada vez que reinicias el contenedor. Para una URL fija necesitas cuenta de pago.
 
 ## 📚 Documentación Completa
 

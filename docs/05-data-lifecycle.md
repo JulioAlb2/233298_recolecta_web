@@ -317,3 +317,119 @@ DEL notification:log:100
 4. **TTL:** Datos temporales con expiración automática
 5. **Métricas:** Se actualizan con cada notificación
 6. **Validación:** Tokens FCM verificados en startup y en cada rechazo
+
+---
+
+## 8. Flujo de Contrato de Evento + Canal Realtime Admin
+
+### Contrato server-owned para eventos de camión
+
+Los clientes móviles deben enviar eventos con contrato versionado:
+
+```json
+{
+  "event_id": "evt_01JXYZ...",
+  "event_type": "TRUCK_STATE_CHANGED",
+  "event_version": "v1",
+  "truck_id": 5,
+  "occurred_at": "2026-04-15T11:45:00Z",
+  "payload": {
+    "state_code": "ARRIVAL",
+    "point_id": 10,
+    "lat": 20.6300,
+    "lon": -87.0742
+  }
+}
+```
+
+### Dedupe + trazabilidad (Redis-first)
+
+1. Resolver hash de deduplicación por contenido del evento.
+2. Revisar `event_deduplication:{event_hash}`.
+3. Si existe, no reprocesar.
+4. Si no existe, procesar regla y persistir:
+   - `event_deduplication:{event_hash}` (TTL 30 días)
+   - `event_trace:{event_id}` (TTL 30 días)
+
+### Endpoint operativo del backend
+
+El backend expone `POST /api/notifications/events/truck-state` para ejecutar este flujo:
+
+1. Validar contrato (`event_id`, `event_type`, `event_version`, `truck_id`, `occurred_at`, `payload.state_code`).
+2. Calcular `event_hash` determinístico por contenido relevante.
+3. Intentar dedupe en Redis (`event_deduplication:{event_hash}`).
+4. Si es duplicado, responder `deduplicated=true` sin reprocesar.
+5. Si es nuevo:
+   - Resolver regla por `state_code` en `rules:state:{state_code}`.
+   - Persistir `event_trace:{event_id}` y `event_trace:truck:{truck_id}`.
+   - Responder acción resuelta y resultado.
+
+Para soporte operativo también se exponen:
+- `GET /api/notifications/events/traces/:event_id`
+- `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+- `GET /api/notifications/observability/:truck_id` (JWT admin) para vista resumida de trazas y sesiones activas.
+
+### Login admin -> token exclusivo de upgrade websocket
+
+1. Admin autentica sesión normal.
+2. Backend emite token exclusivo de upgrade (`ws_upgrade_token`).
+3. Backend guarda claim en `ws:upgrade:{jti}` con expiración corta.
+4. Handshake websocket solo acepta ese token exclusivo (no cualquier bearer).
+
+### Sesión viva y recuperación tras backup/restore
+
+Para evitar que sesiones restauradas desde backup queden válidas:
+
+1. Backend define `realtime:server_epoch:current` en cada arranque.
+2. Claims/sesiones WS guardan `server_epoch`.
+3. En handshake y heartbeat se valida coincidencia de epoch.
+4. Si no coincide, se rechaza la conexión.
+
+Además:
+- Si el admin cierra sesión, la sesión WS se invalida.
+- Si no hay heartbeat por 1 hora, expira `ws:session:{session_id}`.
+
+### Endpoints operativos del backend (fase de sesión realtime)
+
+- `POST /api/realtime/ws/upgrade-token` (JWT admin): emite `ws_upgrade_token` one-time.
+- `POST /api/realtime/ws/sessions/consume`: consume token one-time y abre sesión realtime.
+- `POST /api/realtime/ws/sessions/:session_id/heartbeat` (JWT admin): renueva `last_seen_at` y TTL.
+- `GET /api/realtime/ws/sessions/:session_id` (JWT admin): consulta estado actual de sesión.
+- `DELETE /api/realtime/ws/sessions/:session_id` (JWT admin): cierra sesión.
+
+---
+
+## 9. Flujo de Configuración Dinámica de Reglas (Admin)
+
+### Objetivo
+Permitir cambios de acción, radio y contenido de notificación por estado sin despliegue.
+
+### Endpoints backend
+- `GET /api/notifications/rules`
+- `GET /api/notifications/rules/:state_code`
+- `PUT /api/notifications/rules/:state_code`
+- `DELETE /api/notifications/rules/:state_code`
+
+Los endpoints de reglas usan `JWTAuthMiddleware`.
+
+### Proceso: Upsert de regla
+
+1. Admin envía `PUT /api/notifications/rules/WARN` con payload.
+2. Backend valida:
+   - `state_code` obligatorio (path param).
+   - `action` obligatoria.
+   - `radius_meters >= 0`.
+3. Backend persiste en Redis:
+   - `HSET rules:state:WARN ...`
+   - `INCR rules:version`
+4. Backend responde la regla con versión actual.
+
+### Proceso: Eliminación de regla
+
+1. Admin envía `DELETE /api/notifications/rules/WARN`.
+2. Backend elimina `rules:state:WARN`.
+3. Backend incrementa `rules:version`.
+
+### Consistencia esperada
+- Reglas activas se leen en tiempo real desde Redis.
+- `rules:version` permite invalidar caché en consumidores realtime.

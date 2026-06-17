@@ -389,4 +389,23 @@ chmod +x scripts/tests/postgres/*.sh
 
 ---
 
+## 🧪 Validación funcional API (registro de usuario real)
+
+Además de pruebas de integridad de base de datos, valida el flujo funcional mínimo:
+
+1. `POST /api/ciudadanos/register`
+2. `POST /api/ciudadanos/coordinates` con JWT emitido en el registro
+
+**Recomendado:** ejecutar backend en Docker dev y correr verificaciones con `docker compose exec` para que el entorno sea consistente con la operación local.
+
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml up -d backend
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exec backend \
+  sh -lc "cd /app && /usr/local/go/bin/go test ./src/notificacion/..."
+```
+
+**Nota operativa actual:** el flujo de `usuarios` puede fallar si falta la relación `usuario` en PostgreSQL (`SQLSTATE 42P01`); tratarlo como incidencia de esquema/migración.
+
+---
+
 **Última actualización:** 30 de Enero de 2026 | **Versión:** 1.0-alpha
