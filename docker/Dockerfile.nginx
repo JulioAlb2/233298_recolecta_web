@@ -1,80 +1,25 @@
+FROM node:20-alpine AS frontend_builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --include=dev
+COPY frontend/ ./
+RUN npm run build
+
+FROM node:20-alpine AS mapview_builder
+WORKDIR /app/map-view
+COPY map-view/package*.json ./
+RUN npm ci --include=dev
+COPY map-view/ ./
+RUN npm run build -- --base /mapa/
+
 FROM nginx:stable-alpine
+COPY docker/nginx/nginx.prod.conf /etc/nginx/nginx.conf
 
-# Crear archivo de configuración desde cero
-RUN rm /etc/nginx/nginx.conf
+# Frontend principal en /
+COPY --from=frontend_builder /app/frontend/dist /usr/share/nginx/html
 
-RUN cat > /etc/nginx/nginx.conf <<'EOF'
-user nginx;
-worker_processes auto;
-error_log /var/log/nginx/error.log warn;
-pid /var/run/nginx.pid;
+# Map-view en /mapa/
+COPY --from=mapview_builder /app/map-view/dist /usr/share/nginx/html/mapa
 
-events {
-    worker_connections 1024;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log /var/log/nginx/access.log main;
-
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-    client_max_body_size 20M;
-
-    # Resolver dinámico para DNS de servicios Docker
-    resolver 127.0.0.11 valid=10s;
-    resolver_timeout 5s;
-
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml text/javascript
-               application/json application/javascript application/xml+rss
-               application/rss+xml font/truetype font/opentype
-               application/vnd.ms-fontobject image/svg+xml;
-
-    server {
-        listen 80;
-        server_name localhost;
-
-        location / {
-            root /usr/share/nginx/html;
-            try_files $uri $uri/ /index.html;
-            expires 1d;
-            add_header Cache-Control "public, immutable";
-        }
-
-        location /api/ {
-            proxy_pass http://gin_backend:8080;
-            proxy_set_header   Host              $host;
-            proxy_set_header   X-Real-IP         $remote_addr;
-            proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-            proxy_set_header   X-Forwarded-Proto $scheme;
-        }
-
-        location /health {
-            access_log off;
-            return 200 "healthy\n";
-            add_header Content-Type text/plain;
-        }
-    }
-}
-EOF
-
-# Copiar archivos del frontend
-COPY frontend-placeholder /usr/share/nginx/html
-
-# Exponer puertos
 EXPOSE 80 443
-
 CMD ["nginx", "-g", "daemon off;"]

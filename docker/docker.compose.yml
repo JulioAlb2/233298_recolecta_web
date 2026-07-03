@@ -14,11 +14,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Evitamos que el entrypoint ejecute directamente el SQL (lo ejecuta el wrapper)
-          # Schema Principal y tablas (sin constraints ni indexes)
+      # Schema Principal y tablas (sin constraints ni indexes)
       - ../gin-backend/db_script.sql:/docker-entrypoint-initdb.d/01-db_script.sql.skip:ro
-          # Constraints y relaciones (separado para evitar bloqueos por dependencias)
+        # Constraints y relaciones (separado para evitar bloqueos por dependencias)
       - ../gin-backend/db_constraints.sql:/docker-entrypoint-initdb.d/02-db_constraints.sql.skip:ro
-          # Indexes (separado para evitar bloqueos por dependencias)
+        # Indexes (separado para evitar bloqueos por dependencias)
       - ../gin-backend/db_indexes.sql:/docker-entrypoint-initdb.d/03-db_indexes.sql.skip:ro
       # Seed fuera del backend
       - ./postgresql/seeds/seed.sql:/docker-entrypoint-initdb.d/04-seed.sql.skip:ro
@@ -34,7 +34,11 @@ services:
     networks:
       - app_internal_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME} -h 127.0.0.1 -p 5432 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER} -d ${DB_NAME} -h 127.0.0.1 -p 5432 || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -49,14 +53,18 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
-      - redis_data:/data 
+      - redis_data:/data
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - ./redis/init-scripts/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
       - ./redis/init-scripts:/docker-entrypoint-initdb.d:ro
       - ./redis/seeds:/seeds
     entrypoint: ["/bin/sh", "/usr/local/bin/docker-entrypoint.sh"]
     healthcheck:
-      test: ["CMD-SHELL", "REDISCLI_AUTH=${REDIS_PASSWORD} redis-cli PING || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "REDISCLI_AUTH=${REDIS_PASSWORD} redis-cli PING || exit 1",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -84,8 +92,8 @@ services:
 
   proxy:
     build:
-      context: .
-      dockerfile: Dockerfile.nginx
+      context: ..
+      dockerfile: docker/Dockerfile.nginx
     container_name: nginx_proxy
     restart: always
     env_file:
@@ -93,12 +101,14 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    depends_on:
+      - backend
     networks:
       - app_internal_net
 
 volumes:
   postgres_data:
-  redis_data: 
+  redis_data:
 
 networks:
   app_internal_net:
