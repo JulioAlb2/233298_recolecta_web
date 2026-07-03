@@ -59,6 +59,9 @@ Password: <tu_contraseña_redis del .env>
 
 Todo los comandos se ejecutan desde la raíz del proyecto. Asegúrate de tener Docker y Docker Compose instalados.
 
+> `DB_SEED_MODE` por defecto es `backend`: crea estructura de BD, pero no siembra usuarios por SQL.
+> El seeding de usuarios para desarrollo se hace por API (ver sección siguiente).
+
 ```bash
 # Levantar el servicio en modo de desarrollo en primer plano
 docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env up
@@ -86,6 +89,65 @@ docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exe
 # Redis CLI (usa tu REDIS_PASSWORD)
 docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exec redis sh -c 'REDISCLI_AUTH=<tu_contraseña_redis> redis-cli PING'
 ```
+
+## 🌱 Seeding de usuarios SOLO en desarrollo (por API)
+
+Contrato actual:
+- Login empleado: `POST /api/empleados/login` con `email` + `password`
+- Login ciudadano: `POST /api/ciudadanos/login` con `email` + `password`
+- Registro ciudadano: `POST /api/ciudadanos` requiere `fcm_token` (se guarda en Redis como `fcm:ciudadano:<id>` y también en `user:<id>.fcm_token`)
+
+Este proyecto **no** debe sembrar usuarios de prueba en producción.
+
+1) Define en `.env` las credenciales/valores de seed dev:
+
+```env
+ADMIN_EMAIL=admin@recolecta.mx
+ADMIN_PASSWORD=tu_password_admin
+SEED_EMPLEADO_PASSWORD=tu_password_empleados_dev
+SEED_CIUDADANO_PASSWORD=tu_password_ciudadanos_dev
+SEED_CIUDADANOS_COUNT=200
+# opcional: índice inicial de usuarios seed (default 1)
+SEED_CIUDADANOS_START=1
+# opcional explícito (ya es default)
+DB_SEED_MODE=backend
+```
+
+2) Con el stack dev levantado, ejecuta el seed por API:
+
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up --force-recreate dev-ensure-admin dev-seed-api
+```
+
+> Nota: `dev-ensure-admin` crea/actualiza el admin desde `.env` vía SQL (sin bootstrap interno en Gin).
+
+> Este flujo crea empleados/ciudadanos mediante endpoints del backend y el hash de password se resuelve en backend.
+
+Verificación rápida de tokens FCM en Redis (después del seed):
+```bash
+# Conteo de claves legacy
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env \
+  exec redis sh -lc 'REDISCLI_AUTH=$REDIS_PASSWORD redis-cli KEYS "fcm:ciudadano:*" | wc -l'
+
+# Muestra de hash por ciudadano (ajusta id)
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env \
+  exec redis sh -lc 'REDISCLI_AUTH=$REDIS_PASSWORD redis-cli HGETALL user:1'
+```
+
+## 🧱 Modo normal/prod-like (build estático)
+
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml up -d --build
+```
+
+Ruteo nginx:
+- `/` frontend
+- `/mapa/` map-view
+- `/api/` backend
+
+Fallback SPA:
+- `/` → `/index.html`
+- `/mapa/` → `/mapa/index.html`
 
 ### 3. Levantar el stack con ngrok
 
@@ -116,6 +178,12 @@ La URL será algo como `https://abc123.ngrok-free.app` — compártela con tu eq
 - [CHANGELOG.md](CHANGELOG.md) - Historial de cambios
 
 ---
+
+## 🔁 Si no detecta cambios (air/vite)
+
+Ya está configurado polling para backend (`air`) y frontend/map-view (`vite`).
+Si aun así falla, normalmente es por repo en `C:\...` montado en WSL.
+Recomendado: mover el repo al filesystem de WSL (`/home/...`).
 
 ## 🔧 Comandos de Limpieza
 

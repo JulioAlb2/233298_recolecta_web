@@ -17,6 +17,7 @@ DB_PORT="${POSTGRES_PORT:-5432}"
 DB_HOST="/var/run/postgresql"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
 SEED_PATH="/docker-entrypoint-initdb.d/04-seed.sql.skip"
+SEED_MODE="${DB_SEED_MODE:-backend}"
 
 # =====================
 # COLORES PARA OUTPUT
@@ -85,6 +86,11 @@ check_table_has_data() {
 
 log_info "Verificando si se necesita ejecutar seed..."
 
+if [ "$SEED_MODE" = "backend" ]; then
+    log_warning "DB_SEED_MODE=backend: se omite seed SQL. Usa seeding por API en desarrollo."
+    exit 0
+fi
+
 # Verificar si el archivo de seed existe
 if [ ! -f "$SEED_PATH" ]; then
     log_warning "No se encontró archivo de seed: $SEED_PATH"
@@ -123,24 +129,24 @@ psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" -f "$SEED_PATH" 2>&
 
 if [ $? -eq 0 ]; then
     log_success "Seed ejecutado correctamente"
-    
+
     # Registrar checksum del seed aplicado
     if [ -n "$SEED_CHECKSUM" ]; then
         psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" -c \
             "INSERT INTO schema_version (script_name, type, checksum, description)
              VALUES ('seed.sql', 'seed', '$SEED_CHECKSUM', 'Seed data inicial')
              ON CONFLICT (script_name, checksum) DO NOTHING;" >/dev/null 2>&1
-        
+
         log_success "Seed checksum registrado: $SEED_CHECKSUM"
     fi
-    
+
     # Reporte de datos insertados
     ROL_COUNT=$(check_table_has_data "rol")
     EMPLOYEE_COUNT=$(check_table_has_data "empleado")
     CAMION_COUNT=$(check_table_has_data "camion")
     COLONIA_COUNT=$(check_table_has_data "colonia")
     USUARIO_COUNT=$(check_table_has_data "ciudadano")
-    
+
     echo ""
     echo -e "${GREEN}========================================${NC}"
     echo -e "${GREEN}✓ SEED COMPLETADO${NC}"

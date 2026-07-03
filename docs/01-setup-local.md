@@ -91,6 +91,37 @@ Ver logs:
 docker compose -f docker/docker.compose.yml --env-file .env logs -f
 ```
 
+### 4. Seed de desarrollo (solo DEV, por API)
+
+En este repositorio, el modo recomendado es:
+- `DB_SEED_MODE=backend` (default): PostgreSQL inicializa esquema, pero no inserta usuarios por SQL.
+- El seed de usuarios se ejecuta por scripts externos (sin bootstrap interno en Gin).
+
+Comando (desarrollo):
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up dev-ensure-admin dev-seed-api
+```
+
+Qué hace cada servicio de seed:
+- `dev-ensure-admin`: crea/actualiza el admin en PostgreSQL usando `.env`.
+- `dev-seed-api`: hace login con ese admin y crea empleados/ciudadanos vía API.
+
+Variables requeridas en `.env` para el seed de API:
+```env
+ADMIN_EMAIL=admin@recolecta.mx
+ADMIN_PASSWORD=tu_password_admin
+ADMIN_USERNAME=admin
+SEED_EMPLEADO_PASSWORD=tu_password_empleados_dev
+SEED_CIUDADANO_PASSWORD=tu_password_ciudadanos_dev
+SEED_CIUDADANOS_COUNT=200
+```
+
+Contrato actual de autenticación/registro:
+- Login empleado: `POST /api/empleados/login` con `{ "email", "password" }`.
+- Login ciudadano: `POST /api/ciudadanos/login` con `{ "email", "password" }`.
+- Registro ciudadano: `POST /api/ciudadanos` requiere `fcm_token`.
+  - El backend guarda el token en Redis con clave `fcm:ciudadano:<id>`.
+
 ---
 
 ## ✅ Verificación
@@ -149,10 +180,16 @@ Inicialización automática:
 - **Password:** desde `.env` (`REDIS_PASSWORD`)
 
 ### Nginx (80)
-- **Imagen:** Build custom (`Dockerfile.nginx`)
+- **Imagen:** Build custom (`Dockerfile.nginx` para modo normal/prod, `Dockerfile.nginx.dev` para dev)
 - **Container:** `nginx_proxy`
 - **Puertos:** 80 (HTTP), 443 (futuro HTTPS)
-- **Contenido:** Frontend placeholder en `docker/frontend-placeholder/`
+- **Rutas:**
+  - `/` → frontend
+  - `/mapa/` → map-view
+  - `/api/` → backend
+- **SPA fallback (modo normal/prod):**
+  - 404 en `/` vuelve a `/index.html`
+  - 404 en `/mapa/` vuelve a `/mapa/index.html`
 
 ---
 
@@ -221,8 +258,11 @@ Esto permite que la aplicación use Application Default Credentials sin hardcode
 
 ### Iniciar/detener
 ```bash
-# Iniciar
-docker compose -f docker/docker.compose.yml --env-file .env up -d
+# Iniciar modo normal/prod-like (build estático frontend + map-view)
+docker compose -f docker/docker.compose.yml --env-file .env up -d --build
+
+# Iniciar modo desarrollo (HMR + debug detrás de nginx)
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env up -d --build
 
 # Ver estado
 docker compose -f docker/docker.compose.yml --env-file .env ps
@@ -302,6 +342,16 @@ docker compose -f docker/docker.compose.yml logs database
 docker compose -f docker/docker.compose.yml exec -T database \
   psql -U <usuario> -d <nombre_db> -c "SELECT 1;"
 ```
+
+### ❌ Hot-reload no detecta cambios (WSL + filesystem Windows)
+
+Si Docker corre en WSL y el repo está en `C:\...` (montado como `/mnt/c/...`), los eventos de archivo pueden perderse.
+
+Mitigación aplicada en este repo:
+- `air` con polling (`poll=true`, `poll_interval=1000`)
+- Vite (frontend/map-view) con polling de watch
+
+Si persiste, mueve el repo al filesystem nativo de WSL (`/home/<usuario>/...`).
 
 ### ❌ Variables de entorno no se cargan
 
