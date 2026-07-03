@@ -14,6 +14,14 @@ cp .env.example .env
 # Abre .env y cambia las contraseñas
 ```
 
+## Cambiar a ramas de desarrollo
+
+```bash
+cd frontend && git checkout develop && cd ..
+cd map-view && git checkout develop && cd ..
+cd gin-backend && git checkout develop && cd ..
+```
+
 ## 🌐 Exponer la API localmente con ngrok (para pruebas compartidas)
 
 Cada desarrollador puede exponer su entorno local con una URL pública usando ngrok — sin depender de un servidor compartido.
