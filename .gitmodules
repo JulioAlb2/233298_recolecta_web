@@ -4,3 +4,6 @@
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/Denzel-Santiago/RecolectaWeb.git
+[submodule "map-view"]
+	path = map-view
+	url = https://github.com/Denzel-Santiago/MapaRecolecta.git
