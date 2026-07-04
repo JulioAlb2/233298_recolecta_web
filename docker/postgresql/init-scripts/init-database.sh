@@ -15,9 +15,11 @@ DEFAULT_DB="postgres"
 # Password para conexiones no interactuantes
 export PGPASSWORD="${POSTGRES_PASSWORD:-${DB_PASSWORD:-}}"
 # Montamos el SQL con sufijo .skip para evitar que el entrypoint lo ejecute por defecto
-SCRIPT_PATH="/docker-entrypoint-initdb.d/db_script.sql.skip"
+SCRIPT_PATH="/docker-entrypoint-initdb.d/01-db_script.sql.skip"
+SCHEMA_CONSTRAINTS_PATH="/docker-entrypoint-initdb.d/02-db_constraints.sql.skip"
+SCHEMA_INDEXES_PATH="/docker-entrypoint-initdb.d/03-db_indexes.sql.skip"
 # Seed
-SEED_PATH="/docker-entrypoint-initdb.d/seed.sql.skip"
+SEED_PATH="/docker-entrypoint-initdb.d/04-seed.sql.skip"
 
 # =====================
 # COLORES PARA OUTPUT
@@ -51,9 +53,9 @@ log_error() {
 database_exists() {
     local query="SELECT 1 FROM pg_database WHERE datname = '$DB_NAME';"
     local result
-    
+
     result=$(psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DEFAULT_DB" -t -c "$query" 2>/dev/null || echo "")
-    
+
     if [ -z "$result" ]; then
         return 1  # BD no existe
     else
@@ -124,13 +126,13 @@ CREATED_DB=0
         );
 EOSQL
 
-if database_exists; then    
+if database_exists; then
     log_success "Tabla schema_version verificada"
     log_warning "La base de datos '$DB_NAME' ya existe"
     log_info "Ejecutando script desde línea 6 en adelante (omitiendo CREATE DATABASE)..."
-    
+
     tail -n +6 "$SCRIPT_PATH" | psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" 2>&1
-    
+
     if [ $? -eq 0 ]; then
         log_success "Script ejecutado exitosamente (modo de actualización)"
         # Registrar checksum del schema aplicado (modo actualización)
@@ -151,10 +153,10 @@ else
     log_info "La base de datos '$DB_NAME' no existe"
     log_info "Ejecutando script completo (creando BD)..."
     CREATED_DB=1
-    
+
     # Ejecutar script completo
     psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DEFAULT_DB" -f "$SCRIPT_PATH" 2>&1
-    
+
     if [ $? -eq 0 ]; then
         log_success "Script ejecutado exitosamente (primera creación)"
         # Registrar checksum del schema aplicado (primera creación)
@@ -171,7 +173,7 @@ EOSQL
         log_error "Error al ejecutar el script"
         exit 1
     fi
-    
+
     # Crear schema_version en primera creación (orchestration table)
     log_info "Creando tabla de versioning..."
     psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" <<-EOSQL
@@ -189,34 +191,9 @@ EOSQL
     log_success "Tabla schema_version creada"
 fi
 
-# =====================
-# SEED (solo en creación inicial si existe archivo)
-# =====================
+# Nota: el seed se ejecuta en 01-seed-if-empty.sh para centralizar estrategia
+# (sql/backend) y evitar ejecución duplicada.
 
-if [ "$CREATED_DB" -eq 1 ]; then
-    if [ -f "$SEED_PATH" ]; then
-        log_info "Ejecutando seed: $SEED_PATH"
-        psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" -f "$SEED_PATH" 2>&1
-        if [ $? -eq 0 ]; then
-            log_success "Seed ejecutado correctamente"
-            # Registrar checksum del seed aplicado
-            seed_checksum=$(compute_checksum "$SEED_PATH" || echo "")
-            if [ -n "$seed_checksum" ]; then
-                psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" <<-EOSQL
-                    INSERT INTO schema_version (script_name, type, checksum, description)
-                    VALUES ('seed.sql', 'seed', '$seed_checksum', 'initial seed')
-                    ON CONFLICT (script_name, checksum) DO NOTHING;
-EOSQL
-                log_info "Registrado seed checksum: $seed_checksum"
-            fi
-        else
-            log_error "Falló la ejecución del seed"
-            exit 1
-        fi
-    else
-        log_info "No se encontró seed en $SEED_PATH. Continuando sin seed."
-    fi
-fi
 
 # =====================
 # REPORTE FINAL

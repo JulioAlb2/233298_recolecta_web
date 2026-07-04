@@ -1,13 +1,134 @@
-version: '3.8'
+name: recolecta-dev-env
 
 services:
   backend:
-    image: golang:1.21-alpine
-    volumes:
-      - ./:/app
-
+    build:
+      context: ../gin-backend
+      dockerfile: Dockerfile.dev
+    container_name: gin_backend_dev
     working_dir: /app
+    command: ["air", "-c", "/app/.air.toml"]
+    volumes:
+      - ../gin-backend:/app
+      - ../credentials:/credentials:ro
+      - go_cache:/go/pkg/mod
+    env_file:
+      - ../.env
+    environment:
+      API_PORT: ${BACKEND_PORT:-8080}
+      DB_HOST: postgres_db
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      FCM_CREDENTIALS_FILE: ${FCM_CREDENTIALS_FILE:-/credentials/firebase_credentials.json}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-dev-local}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      app_internal_net:
+        aliases:
+          - gin_backend
 
-    # Nota: este compose es opcional para dev local.
-    # Si quieres hot-reload con Air, instala air en la imagen o monta el binario.
-    # command: air
+  frontend:
+    image: node:20-alpine
+    container_name: frontend_dev
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    expose:
+      - "5173"
+    networks:
+      - app_internal_net
+
+  map-view:
+    image: node:20-alpine
+    container_name: map_view_dev
+    working_dir: /app
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5174 --strictPort --base /mapa/"
+    volumes:
+      - ../map-view:/app
+      - map_view_node_modules:/app/node_modules
+    expose:
+      - "5174"
+    networks:
+      - app_internal_net
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx.dev
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+      - map-view
+
+  dev-ensure-admin:
+    image: postgres:16-alpine
+    container_name: dev_ensure_admin
+    profiles: ["seed"]
+    env_file:
+      - ../.env
+    environment:
+      DB_HOST: postgres_db
+      DB_PORT: 5432
+    command: ["sh", "-c", "tr -d '\r' < /seed/dev-ensure-admin.sh | sh"]
+    volumes:
+      - ../scripts/dev-ensure-admin.sh:/seed/dev-ensure-admin.sh:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - app_internal_net
+
+  dev-seed-api:
+    image: curlimages/curl:8.10.1
+    container_name: dev_seed_api
+    profiles: ["seed"]
+    env_file:
+      - ../.env
+    environment:
+      API_BASE_URL: http://proxy
+      HEALTHCHECK_URL: http://proxy/health
+      MAX_WAIT_SECONDS: ${SEED_MAX_WAIT_SECONDS:-90}
+    command: ["sh", "-c", "tr -d '\r' < /seed/dev-seed-api.sh | sh"]
+    volumes:
+      - ../scripts/dev-seed-api.sh:/seed/dev-seed-api.sh:ro
+    depends_on:
+      dev-ensure-admin:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+      proxy:
+        condition: service_started
+    networks:
+      - app_internal_net
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok_tunnel
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: http proxy:80 --log stdout
+    ports:
+      - "4040:4040"
+    depends_on:
+      - proxy
+    networks:
+      - app_internal_net
+
+volumes:
+  go_cache:
+  frontend_node_modules:
+  map_view_node_modules:

@@ -1,459 +1,217 @@
 #!/bin/bash
 ################################################################################
 # Script: test_seed_integrity.sh
-# Purpose: Validate Redis seed data integrity via Docker
+# Purpose: Validate Redis keyspace against canonical contract v2.0
 # Description:
-#   - Verifies exactly 200 users in users:geo index
-#   - Verifies >= 25 points distributed across routes
-#   - Validates user structure (nombre, colonia_id, fcm_token, lat, lon)
-#   - Validates point structure (route_id, lat, lon, label)
-#   - Shows progress per collection during validation
-#   - Executes via 'docker exec' on isolated Redis container
+#   Verifies that the Redis seed data matches the canonical contract:
+#   - Key counts  (users, points, routes)
+#   - Hash field presence for user:{id}, point:{id}, route:{id}, truck:state:{id}
+#   - TTL on ephemeral keys  (truck:state, notification:sent)
+#   - seed:metadata contract_version and reference_date
+#   - notification:sent SET members
 #
 # Usage:
-#   ./test_seed_integrity.sh                    # Use .env defaults
-#   ./test_seed_integrity.sh --container redis_cache  # Override container name
+#   ./scripts/tests/redis/test_seed_integrity.sh
+#   REDIS_CONTAINER=redis_cache REDIS_PASSWORD=xxx ./scripts/tests/redis/test_seed_integrity.sh
 #
-# Exit codes:
-#   0 - All validations passed
-#   1 - Validation failed
-#   2 - Configuration error (Docker/Redis connection)
+# Env vars:
+#   REDIS_CONTAINER  (default: redis_cache)
+#   REDIS_PASSWORD   (default: r3d1s_s3cur3_p4ss)
+#   REDIS_DB         (default: 0)
 ################################################################################
 
-set -e
+set -u
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Change to project root so relative paths work consistently
+cd "$(dirname "$0")/../../.." || exit 1
 
-# Configuration variables
+# Source .env if available
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
+
+# ── Configuration ─────────────────────────────────────────────────────────────
 REDIS_CONTAINER="${REDIS_CONTAINER:-redis_cache}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-r3d1s_s3cur3_p4ss}"
 REDIS_DB="${REDIS_DB:-0}"
+REFERENCE_DATE="2026-01-30"
 
-# Expected values
-EXPECTED_USERS=200
-MIN_POINTS=25
+# ── Colors ────────────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-################################################################################
-# Functions
-################################################################################
+# ── State ─────────────────────────────────────────────────────────────────────
+PASS=0
+FAIL=0
+FAILED_TESTS=()
 
-# Print colored output
-print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
+# ── Helpers ───────────────────────────────────────────────────────────────────
+rcli() {
+    docker exec -e REDISCLI_AUTH="$REDIS_PASSWORD" "$REDIS_CONTAINER" \
+        redis-cli -n "$REDIS_DB" "$@" 2>/dev/null
 }
 
-print_success() {
-    echo -e "${GREEN}✓${NC} $1"
+pass_test() {
+    echo -e "  ${GREEN}✓${NC} $1"
+    PASS=$((PASS + 1))
 }
 
-print_error() {
-    echo -e "${RED}✗${NC} $1"
+fail_test() {
+    echo -e "  ${RED}✗${NC} $1"
+    FAIL=$((FAIL + 1))
+    FAILED_TESTS+=("$1")
 }
 
-print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
+assert_eq() {
+    local label="$1" actual="$2" expected="$3"
+    if [ "$actual" = "$expected" ]; then
+        pass_test "$label = $actual"
+    else
+        fail_test "$label: got '$actual', expected '$expected'"
+    fi
 }
 
-print_section() {
+assert_positive_ttl() {
+    local key="$1"
+    local ttl
+    ttl=$(rcli TTL "$key")
+    if [ -n "$ttl" ] && [ "$ttl" -gt 0 ] 2>/dev/null; then
+        pass_test "TTL $key = ${ttl}s (activo)"
+    else
+        fail_test "TTL $key = '${ttl}' (esperado > 0)"
+    fi
+}
+
+assert_hash_has_fields() {
+    local key="$1"
+    shift
+    local hkeys
+    hkeys=$(rcli HKEYS "$key" | sort)
+    for field in "$@"; do
+        if echo "$hkeys" | grep -qx "$field"; then
+            pass_test "HKEYS $key ∋ '$field'"
+        else
+            fail_test "HKEYS $key falta campo '$field'"
+        fi
+    done
+}
+
+assert_set_has_members() {
+    local key="$1"
+    shift
+    local smembers
+    smembers=$(rcli SMEMBERS "$key")
+    for m in "$@"; do
+        if echo "$smembers" | grep -qx "$m"; then
+            pass_test "SMEMBERS $key ∋ '$m'"
+        else
+            fail_test "SMEMBERS $key falta miembro '$m'"
+        fi
+    done
+}
+
+section() {
     echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}── $1 ──${NC}"
 }
 
-# Show help
-show_help() {
-    cat << EOF
-Usage: test_seed_integrity.sh [OPTIONS]
+# ── Connectivity ──────────────────────────────────────────────────────────────
+echo "Redis Seed Integrity Test — contrato v2.0"
+echo "==========================================="
+echo "Container : $REDIS_CONTAINER"
+echo "DB        : $REDIS_DB"
+echo "Ref date  : $REFERENCE_DATE"
+echo ""
 
-Description:
-  Validates Redis seed data integrity via 'docker exec' on the Redis container.
-  Tests include:
-  - Exactly 200 users in users:geo geospatial index
-  - At least 25 collection points across 5 routes
-  - User structure (nombre, colonia_id, fcm_token, lat, lon)
-  - Point structure (route_id, lat, lon, label)
-  - Progress display per collection type
+if ! rcli PING | grep -q "PONG"; then
+    echo -e "${RED}FATAL: No se puede conectar al contenedor '$REDIS_CONTAINER'${NC}"
+    exit 1
+fi
 
-Options:
-  --help                  Show this help message
-  --container NAME        Redis container name (default: redis_cache)
-  --redis-password PASS   Redis password (default: r3d1s_s3cur3_p4ss)
-  --redis-db DB           Redis database (default: 0)
-  --verbose               Show detailed validation output
+# ── 1. Counts ─────────────────────────────────────────────────────────────────
+section "1. Conteos de keyspace"
 
-Environment variables:
-  REDIS_CONTAINER        Override redis container name
-  REDIS_PASSWORD         Override redis password
-  REDIS_DB               Override redis database
+assert_eq "ZCARD users:geo" "$(rcli ZCARD users:geo)" "200"
 
-Examples:
-  # Use default container (redis_cache)
-  ./test_seed_integrity.sh
+for rid in 1 2 3 4 5; do
+    assert_eq "LLEN route:points:$rid" "$(rcli LLEN "route:points:$rid")" "5"
+    assert_eq "ZCARD points:ruta:$rid" "$(rcli ZCARD "points:ruta:$rid")" "5"
+done
 
-  # Override container name
-  ./test_seed_integrity.sh --container my_redis
+# ── 2. user:{id} HASH — campos del contrato ───────────────────────────────────
+section "2. user:{id} HASH campos"
 
-  # With detailed output
-  ./test_seed_integrity.sh --verbose
+for uid in 100 199 299; do
+    assert_hash_has_fields "user:$uid" \
+        alias email colonia_id fcm_token fcm_status fcm_created_at fcm_expires_at updated_at
+done
 
-Exit codes:
-  0 - All validations passed
-  1 - Validation failed
-  2 - Configuration error (Docker/Redis connection)
-EOF
-}
+# ── 3. point:{id} HASH — campos del contrato ─────────────────────────────────
+section "3. point:{id} HASH campos"
 
-# Execute redis-cli command via docker exec
-redis_cmd() {
-    if [ -n "$REDIS_PASSWORD" ]; then
-        docker exec -e REDISCLI_AUTH="$REDIS_PASSWORD" "$REDIS_CONTAINER" redis-cli -n "$REDIS_DB" "$@" 2>/dev/null
-    else
-        docker exec "$REDIS_CONTAINER" redis-cli -n "$REDIS_DB" "$@" 2>/dev/null
-    fi
-}
+for pid in 1 12 25; do
+    assert_hash_has_fields "point:$pid" \
+        route_id colonia_id point_code label lat lon
+done
 
-# Check if container is running
-check_docker_container() {
-    if ! docker ps --format "table {{.Names}}" | grep -q "^${REDIS_CONTAINER}$"; then
-        return 1
-    fi
-    return 0
-}
+# ── 4. route:{id} HASH — campos del contrato ─────────────────────────────────
+section "4. route:{id} HASH campos"
 
-# Test Redis connectivity via docker
-test_redis_connection() {
-    print_section "Docker & Redis Connection Test"
-    
-    # Check if docker is available
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed or not in PATH"
-        return 2
-    fi
-    
-    print_info "Docker found: $(docker --version)"
-    
-    # Check if container is running
-    if ! check_docker_container; then
-        print_error "Redis container '${REDIS_CONTAINER}' is not running"
-        print_info "Make sure to run: docker compose up"
-        return 2
-    fi
-    
-    print_success "Container '${REDIS_CONTAINER}' is running"
-    
-    # Test PING command
-    if ! redis_cmd PING > /dev/null 2>&1; then
-        print_error "Cannot connect to Redis via docker exec"
-        print_info "Check Redis password in .env (REDIS_PASSWORD)"
-        return 2
-    fi
-    
-    print_success "Connected to Redis via docker exec"
-    return 0
-}
+for rid in 1 3 5; do
+    assert_hash_has_fields "route:$rid" \
+        name description colonia_id zone shift total_points status
+done
 
-# Validate users in geospatial index
-validate_users() {
-    print_section "Users Validation"
-    
-    local user_count
-    user_count=$(redis_cmd ZCARD users:geo 2>/dev/null || echo "0")
-    
-    print_info "Users in users:geo index: $user_count / $EXPECTED_USERS"
-    
-    if [ "$user_count" -ne "$EXPECTED_USERS" ]; then
-        print_error "Expected $EXPECTED_USERS users, found $user_count"
-        return 1
-    fi
-    
-    print_success "User count validation passed"
-    
-    # Validate sample users (first, middle, last)
-    validate_user_structure 100  # First user
-    validate_user_structure 199  # Middle user
-    validate_user_structure 299  # Last user
-    
-    return 0
-}
+# ── 5. truck:state:{id} HASH + TTL ───────────────────────────────────────────
+section "5. truck:state:{id} HASH + TTL"
 
-# Validate individual user structure
-validate_user_structure() {
-    local user_id=$1
-    local user_key="user:${user_id}"
-    
-    # Check if user exists
-    local exists
-    exists=$(redis_cmd EXISTS "$user_key" 2>/dev/null || echo "0")
-    
-    if [ "$exists" -ne 1 ]; then
-        print_warning "User $user_id not found in Redis"
-        return 1
-    fi
-    
-    # Get user fields
-    local fields
-    fields=$(redis_cmd HKEYS "$user_key" 2>/dev/null)
-    
-    # Check required fields
-    local required_fields=("nombre" "colonia_id" "fcm_token" "lat" "lon")
-    local missing_fields=0
-    
-    for field in "${required_fields[@]}"; do
-        if ! echo "$fields" | grep -q "^${field}$"; then
-            print_warning "User $user_id missing field: $field"
-            ((missing_fields++))
-        fi
+# Assigned trucks: route 1→truck 1, route 2→truck 5, route 3→truck 2, route 4→truck 3, route 5→truck 4
+for tid in 1 2 3 4 5; do
+    assert_hash_has_fields "truck:state:$tid" \
+        route_id current_point_id state lat lon updated_at assignment_source
+    assert_positive_ttl "truck:state:$tid"
+done
+
+# ── 6. notification:sent SET members + TTL ───────────────────────────────────
+section "6. notification:sent SET"
+
+notif_key="notification:sent:100:1:${REFERENCE_DATE}"
+assert_set_has_members "$notif_key" WARN ARRIVAL DEPARTURE COMEBACK
+assert_positive_ttl "$notif_key"
+
+# ── 7. seed:metadata ─────────────────────────────────────────────────────────
+section "7. seed:metadata"
+
+assert_eq "contract_version"    "$(rcli HGET seed:metadata contract_version)"    "2.0"
+assert_eq "reference_date"      "$(rcli HGET seed:metadata reference_date)"      "$REFERENCE_DATE"
+assert_eq "expected_users"      "$(rcli HGET seed:metadata expected_users)"      "200"
+assert_eq "expected_points"     "$(rcli HGET seed:metadata expected_points)"     "25"
+assert_eq "expected_routes"     "$(rcli HGET seed:metadata expected_routes)"     "5"
+assert_eq "expected_colonias"   "$(rcli HGET seed:metadata expected_colonias)"   "8"
+assert_eq "expected_trucks"     "$(rcli HGET seed:metadata expected_trucks)"     "6"
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo ""
+echo "==========================================="
+echo -e "Resultado: ${GREEN}${PASS} pasaron${NC}  ${RED}${FAIL} fallaron${NC}"
+
+if [ "${#FAILED_TESTS[@]}" -gt 0 ]; then
+    echo ""
+    echo -e "${RED}Tests fallidos:${NC}"
+    for t in "${FAILED_TESTS[@]}"; do
+        echo "  - $t"
     done
-    
-    if [ $missing_fields -gt 0 ]; then
-        return 1
-    fi
-    
-    # Get and validate specific fields
-    local nombre fcm_token lat lon
-    nombre=$(redis_cmd HGET "$user_key" nombre 2>/dev/null)
-    fcm_token=$(redis_cmd HGET "$user_key" fcm_token 2>/dev/null)
-    lat=$(redis_cmd HGET "$user_key" lat 2>/dev/null)
-    lon=$(redis_cmd HGET "$user_key" lon 2>/dev/null)
-    
-    # Validate data types and formats
-    if [ -z "$nombre" ]; then
-        print_warning "User $user_id has empty nombre"
-        return 1
-    fi
-    
-    if [ -z "$fcm_token" ]; then
-        print_warning "User $user_id has empty fcm_token"
-        return 1
-    fi
-    
-    # Validate lat/lon are numbers
-    if ! [[ "$lat" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
-        print_warning "User $user_id has invalid latitude: $lat"
-        return 1
-    fi
-    
-    if ! [[ "$lon" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
-        print_warning "User $user_id has invalid longitude: $lon"
-        return 1
-    fi
-    
-    print_success "User $user_id structure valid: $nombre (lat=$lat, lon=$lon)"
-    return 0
-}
+fi
 
-# Validate points across routes
-validate_points() {
-    print_section "Collection Points Validation"
-    
-    local total_points=0
-    local total_routes=5
-    
-    # Count points by route
-    for route_id in $(seq 1 $total_routes); do
-        local route_key="points:ruta:${route_id}"
-        local route_points
-        route_points=$(redis_cmd ZCARD "$route_key" 2>/dev/null || echo "0")
-        
-        print_info "Route $route_id: $route_points points"
-        total_points=$((total_points + route_points))
-    done
-    
-    print_info "Total collection points: $total_points / ~$MIN_POINTS"
-    
-    if [ "$total_points" -lt "$MIN_POINTS" ]; then
-        print_error "Expected at least $MIN_POINTS points, found $total_points"
-        return 1
-    fi
-    
-    print_success "Points count validation passed"
-    
-    # Validate sample points
-    validate_point_structure "point:1"
-    validate_point_structure "point:12"
-    validate_point_structure "point:25"
-    
-    return 0
-}
+echo "==========================================="
 
-# Validate individual point structure
-validate_point_structure() {
-    local point_key=$1
-    
-    # Check if point exists
-    local exists
-    exists=$(redis_cmd EXISTS "$point_key" 2>/dev/null || echo "0")
-    
-    if [ "$exists" -ne 1 ]; then
-        print_warning "Point $point_key not found in Redis"
-        return 1
-    fi
-    
-    # Get point fields
-    local fields
-    fields=$(redis_cmd HKEYS "$point_key" 2>/dev/null)
-    
-    # Check required fields
-    local required_fields=("ruta_id" "lat" "lon" "label")
-    local missing_fields=0
-    
-    for field in "${required_fields[@]}"; do
-        if ! echo "$fields" | grep -q "^${field}$"; then
-            print_warning "Point $point_key missing field: $field"
-            ((missing_fields++))
-        fi
-    done
-    
-    if [ $missing_fields -gt 0 ]; then
-        return 1
-    fi
-    
-    # Get and validate specific fields
-    local route_id lat lon label
-    route_id=$(redis_cmd HGET "$point_key" ruta_id 2>/dev/null)
-    lat=$(redis_cmd HGET "$point_key" lat 2>/dev/null)
-    lon=$(redis_cmd HGET "$point_key" lon 2>/dev/null)
-    label=$(redis_cmd HGET "$point_key" label 2>/dev/null)
-    
-    # Validate data types and formats
-    if [ -z "$route_id" ]; then
-        print_warning "Point $point_key has empty ruta_id"
-        return 1
-    fi
-    
-    # Validate lat/lon are numbers
-    if ! [[ "$lat" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
-        print_warning "Point $point_key has invalid latitude: $lat"
-        return 1
-    fi
-    
-    if ! [[ "$lon" =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
-        print_warning "Point $point_key has invalid longitude: $lon"
-        return 1
-    fi
-    
-    print_success "Point $point_key structure valid: Route $route_id - $label"
-    return 0
-}
+if [ "$FAIL" -gt 0 ]; then
+    exit 1
+fi
 
-# Validate seed metadata
-validate_seed_metadata() {
-    print_section "Seed Metadata Validation"
-    
-    local exists
-    exists=$(redis_cmd EXISTS "seed:metadata" 2>/dev/null || echo "0")
-    
-    if [ "$exists" -ne 1 ]; then
-        print_warning "Seed metadata key not found (optional)"
-        return 0
-    fi
-    
-    local generated_at total_users total_points
-    generated_at=$(redis_cmd HGET "seed:metadata" generated_at 2>/dev/null)
-    total_users=$(redis_cmd HGET "seed:metadata" total_users 2>/dev/null)
-    total_points=$(redis_cmd HGET "seed:metadata" total_points 2>/dev/null)
-    
-    if [ -z "$generated_at" ] || [ -z "$total_users" ] || [ -z "$total_points" ]; then
-        print_warning "Seed metadata incomplete"
-        return 0
-    fi
-    
-    print_success "Seed generated at: $(date -d @"$generated_at" 2>/dev/null || echo "$generated_at")"
-    print_success "Metadata: $total_users users, $total_points points"
-    
-    return 0
-}
-
-################################################################################
-# Main
-################################################################################
-
-main() {
-    # Parse arguments
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            --help)
-                show_help
-                exit 0
-                ;;
-            --container)
-                REDIS_CONTAINER="$2"
-                shift 2
-                ;;
-            --redis-password)
-                REDIS_PASSWORD="$2"
-                shift 2
-                ;;
-            --redis-db)
-                REDIS_DB="$2"
-                shift 2
-                ;;
-            --verbose)
-                VERBOSE=1
-                shift
-                ;;
-            *)
-                print_error "Unknown option: $1"
-                show_help
-                exit 2
-                ;;
-        esac
-    done
-    
-    # Load .env if it exists
-    if [ -f "$(dirname "$0")/../../../.env" ]; then
-        set -a
-        source "$(dirname "$0")/../../../.env"
-        set +a
-    fi
-    
-    print_section "Redis Seed Integrity Test"
-    print_info "Configuration: Container='${REDIS_CONTAINER}' DB=${REDIS_DB}"
-    
-    # Test connection
-    if ! test_redis_connection; then
-        exit 2
-    fi
-    
-    # Run validations
-    local validation_failed=0
-    
-    if ! validate_users; then
-        validation_failed=1
-    fi
-    
-    if ! validate_points; then
-        validation_failed=1
-    fi
-    
-    if ! validate_seed_metadata; then
-        validation_failed=1
-    fi
-    
-    # Final result
-    print_section "Test Summary"
-    
-    if [ $validation_failed -eq 0 ]; then
-        print_success "All seed integrity validations passed!"
-        echo ""
-        print_success "✓ Exactly $EXPECTED_USERS users in users:geo"
-        print_success "✓ At least $MIN_POINTS collection points"
-        print_success "✓ All required fields present and valid"
-        print_success "✓ Data structures consistent"
-        exit 0
-    else
-        print_error "Seed integrity validation FAILED"
-        echo ""
-        print_error "Review the validation errors above"
-        exit 1
-    fi
-}
-
-# Run main function
-main "$@"
+exit 0

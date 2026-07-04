@@ -7,6 +7,85 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 Referencias de como usarlo: [Guia del Changelog](./CHANGELOG.md#-guía-del-changelog)
 
 ---
+# 0.16.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #16](https://github.com/RodrigoMijangos/recolecta_web/issues/16)
+### Changed
+- `docs/05-data-lifecycle.md` incorpora endpoint de resumen operativo `GET /api/notifications/observability/:truck_id`.
+- `docs/04-redis-schema.md` incorpora guía de métricas resumidas a partir de trazas y sesiones activas.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 7.
+- `docker/docker.compose.dev.yml` fija `working_dir` y `command` de backend para cargar Air desde `/app/.air.toml` en desarrollo.
+- `docker/docker.compose.dev.yml` monta credenciales FCM y propaga variables para inicialización consistente del cliente Firebase en desarrollo.
+- `QUICKSTART.md` incorpora validación de flujo real de usuario (registro ciudadano) y uso de `docker compose exec` para pruebas.
+- `docs/testing/postgres-tests.md` agrega sección de validación funcional API y nota de incidencia conocida para `relation \"usuario\" does not exist`.
+
+# 0.15.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #14](https://github.com/RodrigoMijangos/recolecta_web/issues/14)
+### Changed
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 6 de hardening.
+- Se incorpora versionado por fase para cobertura de pruebas unitarias en servicios Redis de notificación/realtime.
+
+# 0.14.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #12](https://github.com/RodrigoMijangos/recolecta_web/issues/12)
+### Changed
+- `docs/04-redis-schema.md` incorpora guía de observabilidad para lectura de trazas de eventos y sesiones realtime.
+- `docs/05-data-lifecycle.md` incorpora endpoints de consulta operativa para soporte (`traces` y `session lookup`).
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 5.
+
+# 0.13.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #11](https://github.com/RodrigoMijangos/recolecta_web/issues/11)
+### Changed
+- `docs/04-redis-schema.md` documenta la implementación operativa de sesiones realtime (`realtime:server_epoch:current`, `ws:upgrade:*`, `ws:session:*`).
+- `docs/05-data-lifecycle.md` incorpora flujo de emisión/consumo de token exclusivo de upgrade y ciclo de sesión realtime.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 4.
+
+# 0.12.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #10](https://github.com/RodrigoMijangos/recolecta_web/issues/10)
+### Changed
+- `docs/04-redis-schema.md` documenta la implementación activa de dedupe/traza (`event_deduplication`, `event_trace`) en backend.
+- `docs/05-data-lifecycle.md` documenta el endpoint operativo `POST /api/notifications/events/truck-state`.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 3.
+
+# 0.11.0-alpha - 2026-04-15
+## Rodrigo Mijangos [Issue #9](https://github.com/RodrigoMijangos/recolecta_web/issues/9)
+### Changed
+- `docs/04-redis-schema.md` incorpora la estructura de reglas dinámicas `rules:state:{state_code}` y versionado global `rules:version`.
+- `docs/05-data-lifecycle.md` incorpora el flujo operativo de administración de reglas dinámicas en backend.
+- Se actualiza el puntero del submódulo `gin-backend` con la Fase 2.
+
+# 0.10.0-alpha - 2026-04-15
+## Rodrigo Mijangos [PR #52](https://github.com/RodrigoMijangos/recolecta_web/pull/52)
+### Changed
+- `docker/docker.compose.dev.yml` ahora carga `.env` y propaga variables FCM al contenedor backend.
+- `docs/01-setup-local.md` documenta la configuración segura de credenciales Firebase para desarrollo y producción.
+- `.env.example` incorpora `GOOGLE_APPLICATION_CREDENTIALS` como variable de referencia para FCM.
+- `.gitignore` se ajusta para evitar versionar credenciales y la carpeta `/credentials`.
+- Se actualiza el puntero del submódulo `gin-backend` con los cambios de integración FCM.
+- `docs/04-redis-schema.md` incorpora diseño de deduplicación/trazabilidad de eventos y sesiones realtime de administrador.
+- `docs/05-data-lifecycle.md` incorpora flujo de contrato versionado de eventos y upgrade seguro a websocket con token exclusivo.
+
+# 0.9.0-alpha - 2026-03-11
+## Rodrigo Mijangos [Issue #1](https://github.com/RodrigoMijangos/recolecta_web/issues/1)
+### Added
+- Configuración de docker compose para entorno productivo y de desarrollo.
+- Configuración de Dockerfile para nginx.
+- Nuevas variables de entorno para configuración de servicios.
+- Integración de revisión healthcheck para servicio backend en frontend placeholder.
+- Aislamiento de servicios redis, postgresql y backend en redes de docker separadas para mayor seguridad en producción.
+- Se exponer backend en puerto 8081 en desarrollo.
+
+### Changed
+- Documentación general actualizada para reflejar cambios en configuración de servicios y uso de docker compose.
+
+# 0.8.0-alpha - 2026-03-11
+## Rodrigo Mijangos [Issue #49](https://github.com/RodrigoMijangos/recolecta_web/issues/49)
+### Added
+- Testing de Integridad de datos de redis.
+
+### Changed
+- Seeding de Redis y Seeding de postgresql ahora estan amoldados al nuevo schema.
+- Testing de integridad de datos de redis ahora verifica que los datos en Redis correspondan con los datos en PostgreSQL, asegurando consistencia entre ambos sistemas.
+- Testing rediseñados según el nuevo schema de postgresql.
+
 # 0.7.0-alpha - 2026-01-31
 ## Rodrigo Mijangos [Issue #5](https://github.com/RodrigoMijangos/recolecta_web/issues/5)
 ### Added

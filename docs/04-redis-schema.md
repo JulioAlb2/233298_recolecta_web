@@ -37,11 +37,12 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields:**
 - `fcm_token` (string)
 - `fcm_status` (string: valid | invalid | expired)
-- `fcm_expiry` (ISO 8601 o epoch)
+- `fcm_created_at` (ISO 8601)
+- `fcm_expires_at` (ISO 8601)
 - `updated_at` (ISO 8601)
 
 **Ejemplo:**
-- `user:100` → { fcm_token: "...", fcm_status: "valid", fcm_expiry: "2026-02-15T00:00:00Z" }
+- `user:100` → { fcm_token: "...", fcm_status: "valid", fcm_expires_at: "2026-03-01T00:00:00Z" }
 
 
 ### 2) Índice geoespacial de usuarios
@@ -79,21 +80,23 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 5) Última ubicación / estado del camión
 
-**Key:** `truck:state:{camion_id}`
+**Key:** `truck:state:{truck_id}`
 **Type:** HASH
 **Fields:**
+- `route_id` (int)
+- `current_point_id` (int)
 - `lat` (float)
 - `lon` (float)
-- `timestamp` (ISO 8601)
-- `state` (WARN | ARRIVAL | DEPARTURE | COMEBACK)
-- `route_id` (int)
+- `state` (INIT | IN_ROUTE | WARN | ARRIVAL | DEPARTURE | COMEBACK)
+- `updated_at` (ISO 8601)
+- `assignment_source` (string)
 
 **TTL:** 24h
 
 
 ### 6) Historial diario de puntos visitados
 
-**Key:** `truck:route:history:{camion_id}:{date}`
+**Key:** `truck:route:history:{truck_id}:{date}`
 **Type:** LIST
 **Value:** `punto_id` en orden visitado
 
@@ -102,7 +105,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 7) Control de notificaciones por estado
 
-**Key:** `notification:sent:{user_id}:{camion_id}:{date}`
+**Key:** `notification:sent:{user_id}:{truck_id}:{date}`
 **Type:** SET
 **Members:** WARN, ARRIVAL, DEPARTURE, COMEBACK
 
@@ -128,7 +131,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 **Fields:**
 - `type` (WARN | ARRIVAL | DEPARTURE | COMEBACK)
 - `status` (pending | delivered | failed)
-- `camion_id` (int)
+- `truck_id` (int)
 - `point_id` (int)
 - `timestamp` (ISO 8601)
 
@@ -140,7 +143,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 ### 10) Métricas diarias por camión
 
-**Key:** `metrics:notifications:{camion_id}:{date}`
+**Key:** `metrics:notifications:{truck_id}:{date}`
 **Type:** HASH
 **Fields:**
 - `total_sent`
@@ -153,6 +156,68 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 
 **TTL:** 7 días
 
+### 11) Dedupe y trazabilidad de eventos (fase de orquestación)
+
+**Key:** `event_deduplication:{event_hash}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_id`, `event_type`, `truck_id`, `processed_at`, `result`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:{event_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `event_version`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `created_at`  
+**TTL objetivo:** 30 días
+
+**Key:** `event_trace:truck:{truck_id}`  
+**Type:** SORTED SET  
+**Member:** `event_id`  
+**Score:** epoch timestamp  
+**TTL objetivo:** 30 días
+
+**Implementación actual en backend (`issue/10`):**
+- `event_deduplication:{event_hash}` se registra con `HSETNX` por hash de evento y TTL 30 días.
+- `event_trace:{event_id}` guarda `event_hash`, `state_code`, `resolved_action`, `admin_notified`, `citizen_fanout_count`, `result`.
+- `event_trace:truck:{truck_id}` indexa eventos por timestamp (ZSET) para auditoría por camión.
+- Se expone consulta operativa vía API:
+  - `GET /api/notifications/events/traces/:event_id`
+  - `GET /api/notifications/events/traces/truck/:truck_id?limit=20`
+- Se expone resumen operativo para monitoreo admin:
+  - `GET /api/notifications/observability/:truck_id` (incluye total de trazas y sesiones WS activas).
+
+### 12) Sesiones realtime de administrador (websocket)
+
+**Key:** `realtime:server_epoch:current`  
+**Type:** STRING  
+**Uso:** invalidar sesiones/tokens restaurados desde backup anterior.
+
+**Key:** `ws:upgrade:{jti}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `session_id`, `server_epoch`, `issued_at`, `expires_at`, `used`  
+**TTL recomendado:** corto (ej. 5 minutos).
+
+**Key:** `ws:session:{session_id}`  
+**Type:** HASH  
+**Fields sugeridos:** `admin_id`, `server_epoch`, `last_seen_at`, `connected_at`, `status`  
+**TTL objetivo por inactividad:** 1 hora.
+
+**Implementación actual en backend (`issue/11`):**
+- `realtime:server_epoch:current` se crea/lee en backend para validar continuidad tras restore.
+- `ws:upgrade:{jti}` almacena token one-time con `used=false` y TTL corto (5 min).
+- `ws:session:{session_id}` almacena sesión activa con heartbeat renovando TTL de 1 hora.
+- Se expone consulta operativa de sesión: `GET /api/realtime/ws/sessions/:session_id`.
+
+### 13) Motor dinámico de reglas de notificación
+
+**Key:** `rules:state:{state_code}`  
+**Type:** HASH  
+**Fields activos en backend:** `state_code`, `action`, `radius_meters`, `priority`, `enabled`, `template_title`, `template_body`, `version`, `updated_at`.
+
+**Key:** `rules:version`  
+**Type:** STRING  
+**Uso:** contador global incremental para invalidar cachés cuando se crea, actualiza o elimina una regla.
+
+**Convención de escritura:** `state_code` se normaliza a mayúsculas.
+
 ---
 
 ## Relación con el seed de PostgreSQL
@@ -160,7 +225,7 @@ PostgreSQL NO se usa para coordenadas ni FCM. Redis es el único repositorio par
 El seed actual define:
 - 5 rutas (`ruta_id` 1..5)
 - 25 puntos (`punto_id` 1..25)
-- 5 asignaciones ruta-camión (`camion_id` 1..5)
+- 6 estados de camión (`truck_id` 1..6, 5 asignados a ruta)
 - 200 usuarios ciudadanos (`user_id` 100..299)
 
 **Implicación para Redis:**

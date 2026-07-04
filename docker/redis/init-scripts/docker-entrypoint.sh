@@ -77,7 +77,7 @@ if [ "$DBSIZE" -eq 0 ]; then
     
     # Verificar carga
     NEW_DBSIZE=$(redis-cli DBSIZE 2>/dev/null | grep -o '[0-9]*')
-    echo "[DETALLE] Redis ahora tiene $NEW_DBSIZE claves" >&2"
+    echo "[DETALLE] Redis ahora tiene $NEW_DBSIZE claves" >&2
 else
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Redis ya contiene datos ($DBSIZE claves) - saltando inicialización"
 fi

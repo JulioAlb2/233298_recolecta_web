@@ -67,10 +67,16 @@ REDIS_PASSWORD=tu_redis_password
 ENVIRONMENT=development
 ```
 
+Si vas a habilitar notificaciones push con Firebase Cloud Messaging, agrega tambien la ruta del archivo de credenciales:
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
+```
+
 **⚠️ Importante:**
 - `.env` debe tener permisos restrictivos (no hacer commit)
 - Usa `.env.example` como referencia
 - En producción, usa gestión de secretos
+- El archivo JSON de credenciales de Firebase no debe vivir dentro del repositorio ni versionarse
 
 > Nota: Docker Compose realiza la interpolación de variables (ej. `${DB_USER}`) al parsear el `docker-compose.yml`. Si tu `.env` está en la raíz y el archivo de Compose está en `docker/`, usa siempre `--env-file .env` al ejecutar `docker compose` (por ejemplo `docker compose --env-file .env -f docker/docker.compose.yml up -d`) para asegurar que las variables se apliquen y evitar warnings. Alternativamente puedes copiar `.env` a `docker/.env` o usar `env_file` en el YAML.
 
@@ -84,6 +90,37 @@ Ver logs:
 ```bash
 docker compose -f docker/docker.compose.yml --env-file .env logs -f
 ```
+
+### 4. Seed de desarrollo (solo DEV, por API)
+
+En este repositorio, el modo recomendado es:
+- `DB_SEED_MODE=backend` (default): PostgreSQL inicializa esquema, pero no inserta usuarios por SQL.
+- El seed de usuarios se ejecuta por scripts externos (sin bootstrap interno en Gin).
+
+Comando (desarrollo):
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up dev-ensure-admin dev-seed-api
+```
+
+Qué hace cada servicio de seed:
+- `dev-ensure-admin`: crea/actualiza el admin en PostgreSQL usando `.env`.
+- `dev-seed-api`: hace login con ese admin y crea empleados/ciudadanos vía API.
+
+Variables requeridas en `.env` para el seed de API:
+```env
+ADMIN_EMAIL=admin@recolecta.mx
+ADMIN_PASSWORD=tu_password_admin
+ADMIN_USERNAME=admin
+SEED_EMPLEADO_PASSWORD=tu_password_empleados_dev
+SEED_CIUDADANO_PASSWORD=tu_password_ciudadanos_dev
+SEED_CIUDADANOS_COUNT=200
+```
+
+Contrato actual de autenticación/registro:
+- Login empleado: `POST /api/empleados/login` con `{ "email", "password" }`.
+- Login ciudadano: `POST /api/ciudadanos/login` con `{ "email", "password" }`.
+- Registro ciudadano: `POST /api/ciudadanos` requiere `fcm_token`.
+  - El backend guarda el token en Redis con clave `fcm:ciudadano:<id>`.
 
 ---
 
@@ -132,8 +169,8 @@ docker compose --env-file .env -f docker/docker.compose.yml ps
 - **Credenciales:** desde `.env` (`DB_USER`, `DB_PASSWORD`, `DB_NAME`)
 
 Inicialización automática:
-- `docker/postgresql/init-scripts/00-init-database.sh` — crea schema
-- `docker/postgresql/init-scripts/01-seed-if-empty.sh` — carga datos iniciales
+- `docker/postgresql/init-scripts/init-database.sh` — crea/actualiza schema y registra checksums
+- `docker/postgresql/init-scripts/seed-if-empty.sh` — carga seed condicional y registra checksums
 - Schema version table: `schema_version` (historial de cambios)
 
 ### Redis (6379)
@@ -143,10 +180,16 @@ Inicialización automática:
 - **Password:** desde `.env` (`REDIS_PASSWORD`)
 
 ### Nginx (80)
-- **Imagen:** Build custom (`Dockerfile.nginx`)
+- **Imagen:** Build custom (`Dockerfile.nginx` para modo normal/prod, `Dockerfile.nginx.dev` para dev)
 - **Container:** `nginx_proxy`
 - **Puertos:** 80 (HTTP), 443 (futuro HTTPS)
-- **Contenido:** Frontend placeholder en `docker/frontend-placeholder/`
+- **Rutas:**
+  - `/` → frontend
+  - `/mapa/` → map-view
+  - `/api/` → backend
+- **SPA fallback (modo normal/prod):**
+  - 404 en `/` vuelve a `/index.html`
+  - 404 en `/mapa/` vuelve a `/mapa/index.html`
 
 ---
 
@@ -171,7 +214,43 @@ REDIS_PASSWORD=tu_redis_password    # Password
 ### Aplicación
 ```env
 ENVIRONMENT=development             # development | production
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
 ```
+
+### Firebase Cloud Messaging (opcional)
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/ruta/segura/firebase/service-account.json
+```
+
+Recomendaciones:
+- Descarga la cuenta de servicio de Firebase en una carpeta fuera del repositorio
+- No reutilices credenciales compartidas entre ambientes
+- Verifica que `.gitignore` excluya archivos JSON sensibles
+
+## 🔔 Notificaciones Push: configuración segura
+
+### Desarrollo local
+
+1. Genera una cuenta de servicio en Firebase con permisos para FCM.
+2. Descarga el archivo JSON en una ruta fuera de este repositorio.
+3. Configura `GOOGLE_APPLICATION_CREDENTIALS` en `.env` con la ruta absoluta del archivo.
+4. Reinicia los servicios o el proceso del backend para que lea la nueva variable.
+
+Ejemplo:
+```env
+GOOGLE_APPLICATION_CREDENTIALS=C:/secure/firebase/recolecta-service-account.json
+```
+
+### Producción
+
+La estrategia recomendada es no copiar credenciales a la imagen ni al repositorio.
+
+- Guarda el `credentials.json` en un gestor externo de secretos, por ejemplo AWS Secrets Manager
+- Concede acceso al secreto mediante IAM al entorno de ejecución
+- Monta el secreto como archivo de solo lectura dentro del contenedor
+- Define `GOOGLE_APPLICATION_CREDENTIALS` con la ruta montada dentro del contenedor, por ejemplo `/run/secrets/firebase_credentials.json`
+
+Esto permite que la aplicación use Application Default Credentials sin hardcodear secretos.
 
 ---
 
@@ -179,8 +258,11 @@ ENVIRONMENT=development             # development | production
 
 ### Iniciar/detener
 ```bash
-# Iniciar
-docker compose -f docker/docker.compose.yml --env-file .env up -d
+# Iniciar modo normal/prod-like (build estático frontend + map-view)
+docker compose -f docker/docker.compose.yml --env-file .env up -d --build
+
+# Iniciar modo desarrollo (HMR + debug detrás de nginx)
+docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env up -d --build
 
 # Ver estado
 docker compose -f docker/docker.compose.yml --env-file .env ps
@@ -260,6 +342,16 @@ docker compose -f docker/docker.compose.yml logs database
 docker compose -f docker/docker.compose.yml exec -T database \
   psql -U <usuario> -d <nombre_db> -c "SELECT 1;"
 ```
+
+### ❌ Hot-reload no detecta cambios (WSL + filesystem Windows)
+
+Si Docker corre en WSL y el repo está en `C:\...` (montado como `/mnt/c/...`), los eventos de archivo pueden perderse.
+
+Mitigación aplicada en este repo:
+- `air` con polling (`poll=true`, `poll_interval=1000`)
+- Vite (frontend/map-view) con polling de watch
+
+Si persiste, mueve el repo al filesystem nativo de WSL (`/home/<usuario>/...`).
 
 ### ❌ Variables de entorno no se cargan
 
@@ -347,7 +439,7 @@ bash verify-redis.sh redis 6379 redis_dev_pass_456
 | Usuarios | 200 | IDs 100-299 con FCM tokens |
 | Colonias | 8 | Distribuidas en Suchiapa |
 | Rutas | 5 | 5 puntos cada una = 25 total |
-| Comandos Redis | ~3000 | En `docker/redis/seeds/redis-seed.txt` |
+| Comandos Redis | ~3000 | En `docker/redis/seeds/redis-seed_v2_*.txt` y symlink `redis-seed-latest.txt` |
 
 ### Estructura de Scripts
 ```
@@ -368,7 +460,7 @@ redis-cli -h localhost -p 6379
 GEORADIUS users:geo 16.5896 -93.0547 1 km WITHCOORD WITHDIST
 
 # Distancia entre dos usuarios
-GEODIST users:geo user:100 user:101 km
+GEODIST users:geo 100 101 km
 ```
 
 ### Limpieza y Reinicio

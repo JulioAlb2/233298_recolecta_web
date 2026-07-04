@@ -97,7 +97,7 @@ Redis healthcheck test passed successfully!
 
 ### test_service_startup.sh
 Verifica que el servicio:
-- Se levanta correctamente con `docker compose up -d redis`
+- Se levanta correctamente con `docker-compose up -d redis` (comando actual del script)
 - Responde a `PING` en menos de 30 segundos
 - El healthcheck eventualmente pasa (puede estar en `starting` durante primeros 30s)
 
@@ -131,20 +131,14 @@ Verifica la integridad completa del seed de datos cargado en Redis:
 **Validaciones:**
 - ✓ Exactamente 200 usuarios en el índice geoespacial `users:geo`
 - ✓ Al menos 25 puntos de recolección distribuidos en 5 rutas
-- ✓ Estructura correcta de usuarios (nombre, colonia_id, fcm_token, lat, lon)
-- ✓ Estructura correcta de puntos (ruta_id, lat, lon, label)
+- ✓ Estructura correcta de usuarios (`alias`, `email`, `colonia_id`, `fcm_*`, `updated_at`)
+- ✓ Estructura correcta de puntos (`route_id`, `colonia_id`, `point_code`, `label`, `lat`, `lon`)
 - ✓ Metadatos del seed (timestamp, totales)
 
 **Ejecución:**
 ```bash
 # Usar configuración de .env
 ./scripts/tests/redis/test_seed_integrity.sh
-
-# Con contenedor personalizado
-./scripts/tests/redis/test_seed_integrity.sh --container redis_cache
-
-# Con ayuda
-./scripts/tests/redis/test_seed_integrity.sh --help
 ```
 
 **Salida esperada:**
@@ -292,17 +286,13 @@ Script auxiliar para ejecutar tests individuales de forma conveniente sin especi
 
 **Uso:**
 ```bash
-# Ejecutar test individual desde cualquier ubicación
-bash scripts/tests/redis/run_test.sh connection
-
-# Ver tests disponibles
-bash scripts/tests/redis/run_test.sh --help
+# Ejecutar test individual (nombre base del archivo test_*.sh)
+bash scripts/tests/redis/run_test.sh test_seed_integrity
+bash scripts/tests/redis/run_test.sh test_persistence
+bash scripts/tests/redis/run_test.sh test_healthcheck
 ```
 
-**Tests disponibles:**
-- `connection` - Verificar conectividad con Redis
-- `persistence` - Verificar persistencia AOF
-- `seed-integrity` - Validar integridad del seed (200 usuarios, 25 puntos)
+**Nota:** `run_test.sh` no implementa flags como `--help`; recibe el nombre del test y lo ejecuta.
 
 **Ejemplo de salida:**
 ```
