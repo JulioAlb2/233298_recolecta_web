@@ -71,7 +71,7 @@ echo "[seed-api] Login admin en $API_BASE_URL/api/empleados/login"
 login_payload=$(printf '{"email":"%s","password":"%s"}' "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
 
 attempt=1
-max_attempts=20
+max_attempts=60
 login_code=""
 login_body=""
 while [ "$attempt" -le "$max_attempts" ]; do

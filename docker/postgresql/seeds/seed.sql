@@ -337,17 +337,30 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
--- 7. RUTAS (5 rutas operativas)
+-- 7. RUTAS (5 rutas operativas con waypoints GPS en Suchiapas, Chiapas)
 -- -----------------------------------------------------------------------------
 -- Schema: id, nombre, descripcion, colonia_id, json_ruta, created_at
--- Nota: colonia_id asignado según la descripción de la ruta
 INSERT INTO ruta (id, nombre, descripcion, colonia_id, json_ruta, created_at) VALUES
-  (1, 'Ruta Norte A', 'Cobertura Colonia Industrial y Las Palmas', 2, '{"zona": "Norte", "turno": "matutino"}', '2024-02-01 08:00:00'),
-  (2, 'Ruta Norte B', 'Cobertura Residencial San Miguel', 7, '{"zona": "Norte", "turno": "vespertino"}', '2024-02-01 08:15:00'),
-  (3, 'Ruta Centro', 'Cobertura Centro Histórico y El Mirador', 1, '{"zona": "Centro", "turno": "matutino"}', '2024-02-01 08:30:00'),
-  (4, 'Ruta Sur A', 'Cobertura Vista Hermosa y Jardines del Valle', 4, '{"zona": "Sur", "turno": "matutino"}', '2024-02-01 08:45:00'),
-  (5, 'Ruta Sur B', 'Cobertura Fraccionamiento Los Pinos', 8, '{"zona": "Sur", "turno": "vespertino"}', '2024-02-01 09:00:00')
-ON CONFLICT (id) DO NOTHING;
+  (1, 'Ruta Norte A', 'Cobertura Colonia Industrial y Las Palmas', 2,
+   '{"zona":"Norte","turno":"matutino","puntos":[{"id":"PR-NA-001","orden":1,"lat":16.6420,"lng":-93.1180,"nombre":"Esq. Calle Industrial / Av. Las Palmas"},{"id":"PR-NA-002","orden":2,"lat":16.6395,"lng":-93.1210,"nombre":"Esq. Calle 3a Nte. / Calle Industrial"},{"id":"PR-NA-003","orden":3,"lat":16.6370,"lng":-93.1155,"nombre":"Esq. Calle 2a Nte. / Pte. Las Palmas"},{"id":"PR-NA-004","orden":4,"lat":16.6345,"lng":-93.1130,"nombre":"Esq. Calle 1a Nte. / Pte. Las Palmas"},{"id":"PR-NA-005","orden":5,"lat":16.6325,"lng":-93.1095,"nombre":"Esq. Av. Las Palmas / Central"}]}',
+   '2024-02-01 08:00:00'),
+  (2, 'Ruta Norte B', 'Cobertura Residencial San Miguel', 7,
+   '{"zona":"Norte","turno":"vespertino","puntos":[{"id":"PR-NB-001","orden":1,"lat":16.6510,"lng":-93.1080,"nombre":"Esq. Residencial San Miguel / 4a Nte."},{"id":"PR-NB-002","orden":2,"lat":16.6480,"lng":-93.1055,"nombre":"Esq. 3a Nte. / Calle San Miguel"},{"id":"PR-NB-003","orden":3,"lat":16.6455,"lng":-93.1030,"nombre":"Esq. 2a Nte. / Calle San Miguel"},{"id":"PR-NB-004","orden":4,"lat":16.6430,"lng":-93.1010,"nombre":"Esq. 1a Nte. / Calle San Miguel"},{"id":"PR-NB-005","orden":5,"lat":16.6405,"lng":-93.0985,"nombre":"Esq. San Miguel / Oriente"}]}',
+   '2024-02-01 08:15:00'),
+  (3, 'Ruta Centro', 'Cobertura Centro Histórico y El Mirador', 1,
+   '{"zona":"Centro","turno":"matutino","puntos":[{"id":"PR-CE-001","orden":1,"lat":16.6278,"lng":-93.1045,"nombre":"Esq. Calle 1a Nte. / Av. Central"},{"id":"PR-CE-002","orden":2,"lat":16.6261,"lng":-93.1038,"nombre":"Esq. Av. Central / Calle 1a Sur"},{"id":"PR-CE-003","orden":3,"lat":16.6241,"lng":-93.1025,"nombre":"Esq. Calle 1a Sur / 1a Ote."},{"id":"PR-CE-004","orden":4,"lat":16.6235,"lng":-93.0998,"nombre":"Esq. 1a Ote. / Calle 2a Sur"},{"id":"PR-CE-005","orden":5,"lat":16.6270,"lng":-93.1070,"nombre":"Esq. 1a Nte. / Av. 1a Pte."}]}',
+   '2024-02-01 08:30:00'),
+  (4, 'Ruta Sur A', 'Cobertura Vista Hermosa y Jardines del Valle', 4,
+   '{"zona":"Sur","turno":"matutino","puntos":[{"id":"PR-SA-001","orden":1,"lat":16.6185,"lng":-93.0950,"nombre":"Esq. Vista Hermosa / Av. Sur"},{"id":"PR-SA-002","orden":2,"lat":16.6162,"lng":-93.0925,"nombre":"Esq. Jardines del Valle / 1a Sur"},{"id":"PR-SA-003","orden":3,"lat":16.6140,"lng":-93.0910,"nombre":"Esq. 2a Sur / Calle Valle"},{"id":"PR-SA-004","orden":4,"lat":16.6120,"lng":-93.0935,"nombre":"Esq. Calle Valle / 3a Sur"},{"id":"PR-SA-005","orden":5,"lat":16.6145,"lng":-93.0960,"nombre":"Esq. 3a Sur / Av. Vista"}]}',
+   '2024-02-01 08:45:00'),
+  (5, 'Ruta Sur B', 'Cobertura Fraccionamiento Los Pinos', 8,
+   '{"zona":"Sur","turno":"vespertino","puntos":[{"id":"PR-SB-001","orden":1,"lat":16.6115,"lng":-93.1050,"nombre":"Esq. Los Pinos / Calle Sur"},{"id":"PR-SB-002","orden":2,"lat":16.6090,"lng":-93.1080,"nombre":"Esq. Fracc. Los Pinos / 2a Nte."},{"id":"PR-SB-003","orden":3,"lat":16.6068,"lng":-93.1110,"nombre":"Esq. 2a Nte. / Calle Pinos"},{"id":"PR-SB-004","orden":4,"lat":16.6085,"lng":-93.1140,"nombre":"Esq. Calle Pinos / Calle Sur"},{"id":"PR-SB-005","orden":5,"lat":16.6110,"lng":-93.1120,"nombre":"Esq. Calle Sur / Av. Los Pinos"}]}',
+   '2024-02-01 09:00:00')
+ON CONFLICT (id) DO UPDATE SET
+  json_ruta   = EXCLUDED.json_ruta,
+  nombre      = EXCLUDED.nombre,
+  descripcion = EXCLUDED.descripcion,
+  colonia_id  = EXCLUDED.colonia_id;
 
 -- -----------------------------------------------------------------------------
 -- 8. PUNTOS DE RECOLECCIÓN (25 puntos distribuidos en 5 rutas)
@@ -394,12 +407,12 @@ ON CONFLICT (id) DO NOTHING;
 -- 9. ASIGNACIÓN RUTA-CAMIÓN (asignaciones activas para hoy)
 -- -----------------------------------------------------------------------------
 -- Schema: id, ruta_id, camion_id, fecha_asignacion, created_at
-INSERT INTO registro_asignacion_ruta (id, ruta_id, camion_id, fecha_asignacion, created_at) VALUES
-  (1, 1, 1, CURRENT_DATE, now()),
-  (2, 2, 5, CURRENT_DATE, now()),
-  (3, 3, 2, CURRENT_DATE, now()),
-  (4, 4, 3, CURRENT_DATE, now()),
-  (5, 5, 4, CURRENT_DATE, now())
+INSERT INTO registro_asignacion_ruta (id, ruta_id, status, camion_id, fecha_asignacion, created_at) VALUES
+  (1, 1, 1, 1, CURRENT_DATE, now()),
+  (2, 2, 1, 5, CURRENT_DATE, now()),
+  (3, 3, 1, 2, CURRENT_DATE, now()),
+  (4, 4, 1, 3, CURRENT_DATE, now()),
+  (5, 5, 1, 4, CURRENT_DATE, now())
 ON CONFLICT (id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
