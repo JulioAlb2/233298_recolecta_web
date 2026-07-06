@@ -35,7 +35,10 @@ Cada desarrollador puede exponer su entorno local con una URL pública usando ng
 
 ```env
 NGROK_AUTHTOKEN=tu_token_aqui
+NGROK_DOMAIN=tu-dominio.ngrok-free.dev
 ```
+
+Reserva un dominio estático gratis en el [dashboard de ngrok](https://dashboard.ngrok.com/domains) y pégalo en `NGROK_DOMAIN`.
 
 ## 🔑 Credenciales (configurables en .env)
 
@@ -113,11 +116,13 @@ SEED_CIUDADANOS_START=1
 DB_SEED_MODE=backend
 ```
 
-2) Con el stack dev levantado, ejecuta el seed por API:
+2) Con el stack dev levantado, ejecuta el seed por API (incluye datos de referencia con rutas GPS):
 
 ```bash
-docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up --force-recreate dev-ensure-admin dev-seed-api
+docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up --force-recreate dev-ensure-admin dev-seed-reference dev-seed-api
 ```
+
+> Nota: `dev-seed-reference` carga colonias, camiones y rutas con `json_ruta` (lat/lng) porque `DB_SEED_MODE=backend` omite el seed SQL completo.
 
 > Nota: `dev-ensure-admin` crea/actualiza el admin desde `.env` vía SQL (sin bootstrap interno en Gin).
 
@@ -167,9 +172,7 @@ docker logs ngrok_tunnel
 # http://localhost:4040
 ```
 
-La URL será algo como `https://abc123.ngrok-free.app` — compártela con tu equipo para que consuman la API directamente.
-
-> **Nota:** Con la cuenta gratuita de ngrok la URL cambia cada vez que reinicias el contenedor. Para una URL fija necesitas cuenta de pago.
+Con `NGROK_DOMAIN` configurado, la URL será fija (por ejemplo `https://tu-dominio.ngrok-free.dev`) aunque reinicies el contenedor.
 
 ## 📚 Documentación Completa
 
