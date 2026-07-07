@@ -277,18 +277,14 @@ ON CONFLICT (id) DO NOTHING;
 -- 3.b DOMICILIOS PARA CIUDADANOS (una dirección por usuario 100..299)
 -- Direcciones formateadas para que servicios de geocodificación las resuelvan fácilmente
 -- -----------------------------------------------------------------------------
--- Schema: id, ciudadano_id, alias, direccion, colonia_id, deleted_at, created_at
-INSERT INTO domicilio (id, ciudadano_id, alias, direccion, colonia_id, deleted_at, created_at)
+-- Schema: id, ciudadano_id, alias, calle, numero, colonia_id, deleted_at, created_at
+INSERT INTO domicilio (id, ciudadano_id, alias, calle, numero, colonia_id, deleted_at, created_at)
 SELECT
   (100 + g) AS id,
   (100 + g) AS ciudadano_id,
   'Domicilio Principal' AS alias,
-  (
-    (ARRAY['Calle Olmo','Calle Lirio','Calle Roble','Avenida Reforma','Calle Cedro','Calle Laurel','Calle Magnolia','Calle Nogal','Calle Pino','Calle Sauce'])[ (g % 10) + 1 ]
-    || ' ' || ((100 + g) % 200 + 10)::text
-    || ', Colonia ' || (ARRAY['Centro Histórico','Colonia Industrial','Las Palmas','Vista Hermosa','Jardines del Valle','El Mirador','Residencial San Miguel','Fraccionamiento Los Pinos'])[ (g % 8) + 1 ]
-    || ', Ciudad Recolecta, Estado Recolecta, CP ' || (ARRAY['38000','38100','38110','38200','38210','38010','38120','38220'])[ (g % 8) + 1 ]
-  ) AS direccion,
+  (ARRAY['Calle Olmo','Calle Lirio','Calle Roble','Avenida Reforma','Calle Cedro','Calle Laurel','Calle Magnolia','Calle Nogal','Calle Pino','Calle Sauce'])[ (g % 10) + 1 ] AS calle,
+  ((100 + g) % 200 + 10)::text AS numero,
   ((g % 8) + 1) AS colonia_id,
   NULL AS deleted_at,
   now() AS created_at
