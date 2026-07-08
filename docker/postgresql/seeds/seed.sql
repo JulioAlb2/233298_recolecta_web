@@ -294,29 +294,34 @@ ON CONFLICT (id) DO NOTHING;
 -- -----------------------------------------------------------------------------
 -- 4. TIPOS DE CAMIÓN
 -- -----------------------------------------------------------------------------
--- Schema: id, nombre, descripcion
-INSERT INTO tipo_camion (id, nombre, descripcion) VALUES
-  (1, 'Compactador 12m³', 'Camión compactador estándar capacidad 12 metros cúbicos'),
-  (2, 'Compactador 15m³', 'Camión compactador gran capacidad 15 metros cúbicos'),
-  (3, 'Camión de Volteo', 'Camión de volteo para escombros y residuos voluminosos')
-ON CONFLICT (id) DO NOTHING;
+-- Schema: tipo_camion_id, nombre, descripcion, created_at
+INSERT INTO tipo_camion (tipo_camion_id, nombre, descripcion, created_at) VALUES
+  (1, 'Compactador 12m³', 'Camión compactador estándar capacidad 12 metros cúbicos', '2024-01-01 00:00:00'),
+  (2, 'Compactador 15m³', 'Camión compactador gran capacidad 15 metros cúbicos', '2024-01-01 00:00:00'),
+  (3, 'Camión de Volteo', 'Camión de volteo para escombros y residuos voluminosos', '2024-01-01 00:00:00')
+ON CONFLICT (tipo_camion_id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- 5. CAMIONES (6 unidades: 3 propios, 3 rentados)
 -- -----------------------------------------------------------------------------
--- Schema: id, placa, modelo, rentado, estado, tipo_id, created_at, updated_at
-INSERT INTO camion (id, placa, modelo, tipo_id, rentado, estado, created_at, updated_at)
+-- Schema: camion_id, placa, modelo, tipo_camion_id, es_rentado, disponibilidad_id,
+--         nombre_disponibilidad, color_disponibilidad, eliminado, created_at, updated_at
+INSERT INTO camion (
+  camion_id, placa, modelo, tipo_camion_id, es_rentado,
+  disponibilidad_id, nombre_disponibilidad, color_disponibilidad,
+  eliminado, created_at, updated_at
+)
 VALUES
   -- Propios
-  (1, 'ABC-123-MX', 'Freightliner M2 106 2022', 1, FALSE, 'Disponible', '2024-01-20 08:00:00', '2024-01-20 08:00:00'),
-  (2, 'DEF-456-MX', 'International DuraStar 2021', 2, FALSE, 'Disponible', '2024-01-20 08:15:00', '2024-01-20 08:15:00'),
-  (3, 'GHI-789-MX', 'Kenworth T370 2023', 1, FALSE, 'Disponible', '2024-01-20 08:30:00', '2024-01-20 08:30:00'),
-  
+  (1, 'ABC-123-MX', 'Freightliner M2 106 2022', 1, FALSE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-01-20 08:00:00', '2024-01-20 08:00:00'),
+  (2, 'DEF-456-MX', 'International DuraStar 2021', 2, FALSE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-01-20 08:15:00', '2024-01-20 08:15:00'),
+  (3, 'GHI-789-MX', 'Kenworth T370 2023', 1, FALSE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-01-20 08:30:00', '2024-01-20 08:30:00'),
+
   -- Rentados
-  (4, 'JKL-012-MX', 'Volvo VHD 2020', 2, TRUE, 'Disponible', '2024-02-01 09:00:00', '2024-02-01 09:00:00'),
-  (5, 'MNO-345-MX', 'Peterbilt 337 2021', 1, TRUE, 'Disponible', '2024-02-01 09:15:00', '2024-02-01 09:15:00'),
-  (6, 'PQR-678-MX', 'Mack LR 2019', 3, TRUE, 'Disponible', '2024-02-01 09:30:00', '2024-02-01 09:30:00')
-ON CONFLICT (id) DO NOTHING;
+  (4, 'JKL-012-MX', 'Volvo VHD 2020', 2, TRUE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-02-01 09:00:00', '2024-02-01 09:00:00'),
+  (5, 'MNO-345-MX', 'Peterbilt 337 2021', 1, TRUE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-02-01 09:15:00', '2024-02-01 09:15:00'),
+  (6, 'PQR-678-MX', 'Mack LR 2019', 3, TRUE, 1, 'DISPONIBLE', '#22c55e', FALSE, '2024-02-01 09:30:00', '2024-02-01 09:30:00')
+ON CONFLICT (camion_id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- 6. HISTORIAL DE ASIGNACIÓN (conductores asignados a camiones)
