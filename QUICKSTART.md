@@ -28,8 +28,10 @@ Cada desarrollador puede exponer su entorno local con una URL pública usando ng
 
 ### 1. Obtener el authtoken
 
-1. Crear cuenta gratis en https://ngrok.com
+1. Crear cuenta gratis en [https://ngrok.com](https://ngrok.com)
 2. Copiar el authtoken desde el dashboard
+
+
 
 ### 2. Configurar en `.env`
 
@@ -42,7 +44,10 @@ Reserva un dominio estático gratis en el [dashboard de ngrok](https://dashboard
 
 ## 🔑 Credenciales (configurables en .env)
 
+
+
 ### PostgreSQL
+
 ```
 Host: localhost
 Port: 5432
@@ -51,12 +56,17 @@ Password: <tu_contraseña del .env>
 Database: <nombre_base_datos del .env>
 ```
 
+
+
 ### Redis
+
 ```
 Host: localhost
 Port: 6379
 Password: <tu_contraseña_redis del .env>
 ```
+
+
 
 ## 🛠️ Comandos Más Usados
 
@@ -93,16 +103,19 @@ docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exe
 docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml exec redis sh -c 'REDISCLI_AUTH=<tu_contraseña_redis> redis-cli PING'
 ```
 
+
+
 ## 🌱 Seeding de usuarios SOLO en desarrollo (por API)
 
 Contrato actual:
+
 - Login empleado: `POST /api/empleados/login` con `email` + `password`
 - Login ciudadano: `POST /api/ciudadanos/login` con `email` + `password`
 - Registro ciudadano: `POST /api/ciudadanos` requiere `fcm_token` (se guarda en Redis como `fcm:ciudadano:<id>` y también en `user:<id>.fcm_token`)
 
 Este proyecto **no** debe sembrar usuarios de prueba en producción.
 
-1) Define en `.env` las credenciales/valores de seed dev:
+1. Define en `.env` las credenciales/valores de seed dev:
 
 ```env
 ADMIN_EMAIL=admin@recolecta.mx
@@ -116,7 +129,7 @@ SEED_CIUDADANOS_START=1
 DB_SEED_MODE=backend
 ```
 
-2) Con el stack dev levantado, ejecuta el seed por API (incluye datos de referencia con rutas GPS):
+1. Con el stack dev levantado, ejecuta el seed por API (incluye datos de referencia con rutas GPS):
 
 ```bash
 docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --profile seed up --force-recreate dev-ensure-admin dev-seed-reference dev-seed-api
@@ -129,6 +142,7 @@ docker compose --env-file .env -f docker/docker.compose.yml -f docker/docker.com
 > Este flujo crea empleados/ciudadanos mediante endpoints del backend y el hash de password se resuelve en backend.
 
 Verificación rápida de tokens FCM en Redis (después del seed):
+
 ```bash
 # Conteo de claves legacy
 docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --env-file .env \
@@ -139,6 +153,8 @@ docker compose -f docker/docker.compose.yml -f docker/docker.compose.dev.yml --e
   exec redis sh -lc 'REDISCLI_AUTH=$REDIS_PASSWORD redis-cli HGETALL user:1'
 ```
 
+
+
 ## 🧱 Modo normal/prod-like (build estático)
 
 ```bash
@@ -146,13 +162,17 @@ docker compose --env-file .env -f docker/docker.compose.yml up -d --build
 ```
 
 Ruteo nginx:
+
 - `/` frontend
 - `/mapa/` map-view
 - `/api/` backend
 
 Fallback SPA:
+
 - `/` → `/index.html`
 - `/mapa/` → `/mapa/index.html`
+
+
 
 ### 3. Levantar el stack con ngrok
 
@@ -182,6 +202,8 @@ Con `NGROK_DOMAIN` configurado, la URL será fija (por ejemplo `https://tu-domin
 
 ---
 
+
+
 ## 🔁 Si no detecta cambios (air/vite)
 
 Ya está configurado polling para backend (`air`) y frontend/map-view (`vite`).
@@ -207,6 +229,7 @@ docker system prune -af --volumes; docker compose -f docker/docker.compose.yml -
 ```
 
 **Cuándo usar limpieza completa:**
+
 - Variables de entorno no se aplican
 - Cambios en Dockerfiles no se reflejan
 - Errores persistentes en contenedores
