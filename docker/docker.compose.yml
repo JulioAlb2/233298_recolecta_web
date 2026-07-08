@@ -99,9 +99,14 @@ services:
     restart: always
     env_file:
       - ../.env
+    environment:
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-localhost}
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - ${LETSENCRYPT_DIR:-./certbot/letsencrypt}:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
     depends_on:
       - backend
     networks:

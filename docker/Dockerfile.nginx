@@ -13,13 +13,15 @@ COPY map-view/ ./
 RUN npm run build -- --base /mapa/
 
 FROM nginx:stable-alpine
-COPY docker/nginx/nginx.prod.conf /etc/nginx/nginx.conf
+RUN apk add --no-cache gettext
 
-# Frontend principal en /
+COPY docker/nginx/nginx.http.conf.template /etc/nginx/templates/nginx.http.conf.template
+COPY docker/nginx/nginx.https.conf.template /etc/nginx/templates/nginx.https.conf.template
+COPY docker/nginx/entrypoint.sh /docker-entrypoint-nginx.sh
+RUN chmod +x /docker-entrypoint-nginx.sh
+
 COPY --from=frontend_builder /app/frontend/dist /usr/share/nginx/html
-
-# Map-view en /mapa/
 COPY --from=mapview_builder /app/map-view/dist /usr/share/nginx/html/mapa
 
 EXPOSE 80 443
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/docker-entrypoint-nginx.sh"]

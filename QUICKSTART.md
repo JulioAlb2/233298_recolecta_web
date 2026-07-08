@@ -172,6 +172,50 @@ Fallback SPA:
 - `/` → `/index.html`
 - `/mapa/` → `/mapa/index.html`
 
+## 🔒 HTTPS en producción (Contabo / VPS)
+
+Requisitos: dominio con registro **A** apuntando a la IP del servidor.
+
+1. Despliega el stack en modo producción:
+
+```bash
+docker compose --env-file .env -f docker/docker.compose.yml up -d --build
+```
+
+2. En el servidor, configura en `.env`:
+
+```env
+LETSENCRYPT_DIR=/etc/letsencrypt
+NGINX_SERVER_NAME=tu-dominio.com
+```
+
+3. Obtén certificado Let's Encrypt:
+
+```bash
+bash scripts/setup-ssl.sh tu-dominio.com admin@tu-dominio.com
+```
+
+El script:
+- configura `NGINX_SERVER_NAME` en `.env`
+- valida el dominio vía webroot (`docker/certbot/www`)
+- monta certificados en nginx y habilita redirección HTTP → HTTPS
+
+3. Actualiza clientes (app móvil, CORS):
+
+```env
+# .env del servidor
+NGINX_SERVER_NAME=tu-dominio.com
+CORS_ORIGINS=https://tu-dominio.com
+```
+
+```env
+# Recolecta/.env (Flutter)
+API_URL=https://tu-dominio.com/api
+```
+
+Sin certificados, nginx sirve solo HTTP. Con certificados en
+`/etc/letsencrypt/live/<dominio>/`, el entrypoint activa HTTPS automáticamente.
+
 
 
 ### 3. Levantar el stack con ngrok
