@@ -2,7 +2,7 @@
 set -eu
 
 API_BASE_URL="${API_BASE_URL:-http://localhost}"
-HEALTHCHECK_URL="${HEALTHCHECK_URL:-${API_BASE_URL%/}/health}"
+HEALTHCHECK_URL="${HEALTHCHECK_URL:-${API_BASE_URL%/}/api/swagger/index.html}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-${ADMIN_MAIL:-}}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 SEED_EMPLEADO_PASSWORD="${SEED_EMPLEADO_PASSWORD:-}"
@@ -104,7 +104,7 @@ create_colonia() {
   nombre="$1"
   zona="$2"
   payload=$(printf '{"nombre":"%s","zona":"%s"}' "$nombre" "$zona")
-  result=$(post_json "$API_BASE_URL/api/colonias" "$payload" "$token")
+  result=$(post_json "$API_BASE_URL/api/colonia" "$payload" "$token")
   echo "[seed-api] colonia $nombre -> $(printf "%s" "$result" | sed -n '1p')"
 }
 
@@ -247,12 +247,12 @@ create_historial() {
 }
 
 echo "[seed-api] Sembrando Historial de Asignaciones..."
-create_historial 7 1 "2024-02-10"
-create_historial 8 2 "2024-02-10"
-create_historial 9 3 "2024-02-10"
-create_historial 10 4 "2024-02-15"
-create_historial 11 5 "2024-02-15"
-create_historial 12 6 "2024-02-15"
+create_historial 7 1 "2024-02-10T00:00:00Z"
+create_historial 8 2 "2024-02-10T00:00:00Z"
+create_historial 9 3 "2024-02-10T00:00:00Z"
+create_historial 10 4 "2024-02-15T00:00:00Z"
+create_historial 11 5 "2024-02-15T00:00:00Z"
+create_historial 12 6 "2024-02-15T00:00:00Z"
 
 # 7. SEED RUTAS Y PUNTOS DE RECOLECCIÓN (CON PERSISTENCIA DUAL REDIS + PG)
 create_ruta() {
@@ -323,11 +323,11 @@ create_ruta_camion() {
 }
 
 echo "[seed-api] Sembrando Asignación Ruta-Camión..."
-create_ruta_camion 1 1 "2026-07-14"
-create_ruta_camion 2 5 "2026-07-14"
-create_ruta_camion 3 2 "2026-07-14"
-create_ruta_camion 4 3 "2026-07-14"
-create_ruta_camion 5 4 "2026-07-14"
+create_ruta_camion 1 1 "2026-07-14T00:00:00Z"
+create_ruta_camion 2 5 "2026-07-14T00:00:00Z"
+create_ruta_camion 3 2 "2026-07-14T00:00:00Z"
+create_ruta_camion 4 3 "2026-07-14T00:00:00Z"
+create_ruta_camion 5 4 "2026-07-14T00:00:00Z"
 
 # 9. SEED TIPOS DE MANTENIMIENTO
 create_tipo_mantenimiento() {
@@ -384,8 +384,8 @@ create_registro_mantenimiento() {
 }
 
 echo "[seed-api] Sembrando Registros de Mantenimiento..."
-create_registro_mantenimiento 1 2 2 "Mecánico Juan" "2026-01-20 12:00:00" 15000 "Servicio realizado con éxito"
-create_registro_mantenimiento 2 5 2 "Mecánico Pedro" "2026-01-22 17:00:00" 102000 "Se cambiaron balatas delanteras"
-create_registro_mantenimiento 3 6 3 "Mecánico Carlos" "2026-01-25 11:00:00" 89000 "Filtros reemplazados"
+create_registro_mantenimiento 1 2 2 "Mecánico Juan" "2026-01-20T12:00:00Z" 15000 "Servicio realizado con éxito"
+create_registro_mantenimiento 2 5 2 "Mecánico Pedro" "2026-01-22T17:00:00Z" 102000 "Se cambiaron balatas delanteras"
+create_registro_mantenimiento 3 6 3 "Mecánico Carlos" "2026-01-25T11:00:00Z" 89000 "Filtros reemplazados"
 
 echo "[seed-api] Seeding dev por API completado con sincronización a Redis!"

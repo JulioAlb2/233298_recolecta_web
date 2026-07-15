@@ -99,7 +99,7 @@ services:
       - ../.env
     environment:
       API_BASE_URL: http://proxy
-      HEALTHCHECK_URL: http://proxy/health
+      HEALTHCHECK_URL: http://proxy/api/swagger/index.html
       MAX_WAIT_SECONDS: ${SEED_MAX_WAIT_SECONDS:-90}
     command: ["sh", "-c", "tr -d '\r' < /seed/dev-seed-api.sh | sh"]
     volumes:
