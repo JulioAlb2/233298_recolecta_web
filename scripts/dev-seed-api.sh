@@ -335,7 +335,7 @@ create_tipo_mantenimiento() {
   nombre="$2"
   cat="$3"
   payload=$(printf '{"tipo_mantenimiento_id":%s,"nombre":"%s","categoria":"%s","eliminado":false}' "$id" "$nombre" "$cat")
-  result=$(post_json "$API_BASE_URL/api/tipo-mantenimiento/" "$payload" "$token")
+  result=$(post_json "$API_BASE_URL/api/tipos-mantenimiento/" "$payload" "$token")
   echo "[seed-api] tipo-mantenimiento $nombre -> $(printf "%s" "$result" | sed -n '1p')"
 }
 
