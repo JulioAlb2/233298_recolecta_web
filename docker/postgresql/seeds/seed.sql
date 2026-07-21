@@ -1,20 +1,9 @@
 -- =============================================================================
--- SEED NIVEL PYME - Sistema de Recolección de Basura
+-- SEED DE CONFIGURACIÓN ESTÁTICA - Roles del Sistema
 -- =============================================================================
--- Datos coherentes para una empresa mediana con:
--- - 4 roles organizacionales
--- - 12 usuarios (admin, coordinadores, operadores, conductores)
--- - 8 colonias en 3 zonas
--- - 6 camiones (3 propios, 3 rentados)
--- - 5 rutas operativas con puntos de recolección
--- - Tipos de mantenimiento preventivo y correctivo
--- =============================================================================
-
 BEGIN;
 
--- -----------------------------------------------------------------------------
 -- 1. ROLES DEL SISTEMA
--- -----------------------------------------------------------------------------
 -- Schema: id, nombre, active
 INSERT INTO rol (id, nombre, active) VALUES
   (1, 'Administrador', TRUE),
@@ -449,22 +438,3 @@ INSERT INTO aviso (id, enviado_por, tipo_aviso, descripcion, entidad_involucrada
 ON CONFLICT (id) DO NOTHING;
 
 COMMIT;
-
--- =============================================================================
--- FIN DEL SEED
--- =============================================================================
--- Resumen de datos insertados:
--- - 5 roles
--- - 8 colonias (3 zonas)
--- - 12 empleados (staff)
--- - 200 ciudadanos
--- - 3 tipos de camión
--- - 6 camiones (3 propios, 3 rentados)
--- - 6 asignaciones conductor-camión activas
--- - 5 rutas operativas
--- - 25 puntos de recolección
--- - 5 asignaciones ruta-camión activas para hoy
--- - 8 tipos de mantenimiento
--- - 3 registros de mantenimiento
--- - 1 aviso general activo
--- =============================================================================

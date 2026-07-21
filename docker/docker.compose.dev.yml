@@ -118,8 +118,8 @@ services:
       - ../.env
     environment:
       API_BASE_URL: http://proxy
-      HEALTHCHECK_URL: http://proxy/health
-      MAX_WAIT_SECONDS: ${SEED_MAX_WAIT_SECONDS:-180}
+      HEALTHCHECK_URL: http://proxy/api/swagger/index.html
+      MAX_WAIT_SECONDS: ${SEED_MAX_WAIT_SECONDS:-90}
     command: ["sh", "-c", "tr -d '\r' < /seed/dev-seed-api.sh | sh"]
     volumes:
       - ../scripts/dev-seed-api.sh:/seed/dev-seed-api.sh:ro
@@ -139,7 +139,8 @@ services:
     restart: unless-stopped
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    command: http proxy:80 --domain=${NGROK_DOMAIN} --log stdout
+      NGROK_DOMAIN: ${NGROK_DOMAIN:-}
+    entrypoint: ["sh", "-c", "if [ -n \"$NGROK_DOMAIN\" ]; then exec /nix/store/1qpvcjc0idldmxsrcjsyc60ijc0gyla9-scripts/entrypoint.sh http proxy:80 --domain \"$NGROK_DOMAIN\" --log stdout; else exec /nix/store/1qpvcjc0idldmxsrcjsyc60ijc0gyla9-scripts/entrypoint.sh http proxy:80 --log stdout; fi"]
     ports:
       - "4040:4040"
     depends_on:

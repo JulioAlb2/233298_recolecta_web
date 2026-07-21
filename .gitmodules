@@ -1,6 +1,6 @@
 [submodule "gin-backend"]
 	path = gin-backend
-	url = https://github.com/vicpoo/API_recolecta.git
+	url =  https://github.com/JulioAlb2/API_recolecta_julio.git
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/Denzel-Santiago/RecolectaWeb.git
