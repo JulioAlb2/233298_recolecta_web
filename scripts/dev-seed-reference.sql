@@ -11,7 +11,7 @@ INSERT INTO rol (id, nombre, active) VALUES
   (5, 'Ciudadano', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO colonia (id, nombre, zona, created_at) VALUES
+INSERT INTO colonia (colonia_id, nombre, zona, created_at) VALUES
   (1, 'Centro Histórico', 'Centro', '2024-01-15 08:00:00'),
   (2, 'Colonia Industrial', 'Norte', '2024-01-15 08:00:00'),
   (3, 'Las Palmas', 'Norte', '2024-01-15 08:00:00'),
@@ -20,13 +20,13 @@ INSERT INTO colonia (id, nombre, zona, created_at) VALUES
   (6, 'El Mirador', 'Centro', '2024-01-15 08:00:00'),
   (7, 'Residencial San Miguel', 'Norte', '2024-01-15 08:00:00'),
   (8, 'Fraccionamiento Los Pinos', 'Sur', '2024-01-15 08:00:00')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (colonia_id) DO NOTHING;
 
-INSERT INTO tipo_camion (id, nombre, descripcion) VALUES
+INSERT INTO tipo_camion (tipo_camion_id, nombre, descripcion) VALUES
   (1, 'Compactador 12m³', 'Camión compactador estándar capacidad 12 metros cúbicos'),
   (2, 'Compactador 15m³', 'Camión compactador gran capacidad 15 metros cúbicos'),
   (3, 'Camión de Volteo', 'Camión de volteo para escombros y residuos voluminosos')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (tipo_camion_id) DO NOTHING;
 
 INSERT INTO camion (id, placa, modelo, tipo_id, rentado, estado, created_at, updated_at)
 VALUES
@@ -68,12 +68,23 @@ INSERT INTO punto_recoleccion (id, ruta_id, direccion) VALUES
   (21, 5, 'PR-SB-001'), (22, 5, 'PR-SB-002'), (23, 5, 'PR-SB-003'), (24, 5, 'PR-SB-004'), (25, 5, 'PR-SB-005')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO registro_asignacion_ruta (id, ruta_id, status, camion_id, fecha_asignacion, created_at) VALUES
-  (1, 1, 1, 1, CURRENT_DATE, now()),
-  (2, 2, 1, 5, CURRENT_DATE, now()),
-  (3, 3, 1, 2, CURRENT_DATE, now()),
-  (4, 4, 1, 3, CURRENT_DATE, now()),
-  (5, 5, 1, 4, CURRENT_DATE, now())
-ON CONFLICT (id) DO NOTHING;
+-- registro_asignacion_ruta fue reemplazada por ruta_camion en el esquema actual
+-- (ya no existe columna "status"; usa "fecha" y "eliminado"). No tiene una
+-- columna unica declarada aparte del PK autogenerado, por lo que este INSERT
+-- usa un guard manual con NOT EXISTS para poder correr el seed mas de una vez
+-- sin duplicar filas.
+INSERT INTO ruta_camion (ruta_id, camion_id, fecha)
+SELECT v.ruta_id, v.camion_id, v.fecha
+FROM (VALUES
+  (1, 1, CURRENT_DATE),
+  (2, 5, CURRENT_DATE),
+  (3, 2, CURRENT_DATE),
+  (4, 3, CURRENT_DATE),
+  (5, 4, CURRENT_DATE)
+) AS v(ruta_id, camion_id, fecha)
+WHERE NOT EXISTS (
+  SELECT 1 FROM ruta_camion rc
+  WHERE rc.ruta_id = v.ruta_id AND rc.camion_id = v.camion_id
+);
 
 COMMIT;
