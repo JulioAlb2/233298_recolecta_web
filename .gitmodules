@@ -7,3 +7,9 @@
 [submodule "map-view"]
 	path = map-view
 	url = https://github.com/Yara-Molina/MapaRecolectaFork.git
+[submodule "modelo-reportes"]
+	path = modelo-reportes
+	url = https://github.com/Yara-Molina/modelo_reportes_Fork.git
+[submodule "clasificador-reportes"]
+	path = clasificador-reportes
+	url = https://github.com/Yara-Molina/Recolecta_GI.git

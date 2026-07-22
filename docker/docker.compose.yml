@@ -91,6 +91,40 @@ services:
     networks:
       - app_internal_net
 
+  modelo-reportes:
+    build:
+      context: ../modelo-reportes
+      dockerfile: Dockerfile
+    container_name: modelo_reportes
+    restart: always
+    environment:
+      DATABASE_URL: sqlite:////data/modelo_reportes.db
+    volumes:
+      - modelo_reportes_data:/data
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    networks:
+      - app_internal_net
+
+  clasificador-reportes:
+    build:
+      context: ../clasificador-reportes
+      dockerfile: Dockerfile
+    container_name: clasificador_reportes
+    restart: always
+    environment:
+      DATABASE_URL: sqlite:////data/clasificador_reportes.db
+    volumes:
+      - clasificador_reportes_data:/data
+    expose:
+      - "8001"
+    ports:
+      - "8001:8001"
+    networks:
+      - app_internal_net
+
   proxy:
     build:
       context: ..
@@ -110,6 +144,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  modelo_reportes_data:
+  clasificador_reportes_data:
 
 networks:
   app_internal_net:
