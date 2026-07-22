@@ -79,6 +79,36 @@ compute_checksum() {
     fi
 }
 
+# Ejecuta un archivo SQL completo (constraints/indexes) contra $DB_NAME y
+# registra su checksum en schema_version. A diferencia de db_script.sql, estos
+# archivos no tienen preámbulo de CREATE DATABASE que recortar -- su único
+# "\c" es inofensivo corrido las veces que sea, así que siempre se corren
+# completos, sin importar si la BD ya existía o se acaba de crear.
+apply_schema_file() {
+    file_path="$1"
+    script_name="$2"
+    version_type="$3"
+
+    log_info "Ejecutando $script_name..."
+    psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" -f "$file_path" 2>&1
+
+    if [ $? -eq 0 ]; then
+        log_success "$script_name ejecutado exitosamente"
+        checksum=$(compute_checksum "$file_path" || echo "")
+        if [ -n "$checksum" ]; then
+            psql -U "$DB_USER" -p "$DB_PORT" -h "$DB_HOST" -d "$DB_NAME" <<-EOSQL
+                INSERT INTO schema_version (script_name, type, checksum, description)
+                VALUES ('$script_name', '$version_type', '$checksum', 'applied')
+                ON CONFLICT (script_name, checksum) DO NOTHING;
+EOSQL
+            log_info "Registrado $version_type checksum: $checksum"
+        fi
+    else
+        log_error "Error al ejecutar $script_name"
+        exit 1
+    fi
+}
+
 # =====================
 # MAIN SCRIPT
 # =====================
@@ -190,6 +220,15 @@ EOSQL
 EOSQL
     log_success "Tabla schema_version creada"
 fi
+
+# =====================
+# CONSTRAINTS E INDEXES
+# =====================
+# Se ejecutan siempre después de db_script.sql (BD nueva o preexistente): sin
+# este paso, db_constraints.sql (FKs, RLS) y db_indexes.sql nunca corrían de
+# verdad al levantar el contenedor -- quedaban escritos pero ignorados.
+apply_schema_file "$SCHEMA_CONSTRAINTS_PATH" "db_constraints.sql" "constraints"
+apply_schema_file "$SCHEMA_INDEXES_PATH" "db_indexes.sql" "indexes"
 
 # Nota: el seed se ejecuta en 01-seed-if-empty.sh para centralizar estrategia
 # (sql/backend) y evitar ejecución duplicada.
