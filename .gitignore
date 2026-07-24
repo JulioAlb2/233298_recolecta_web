@@ -8,6 +8,9 @@
 docker/postgresql/dumps/
 docker/redis/seeds/
 
+# Bases SQLite locales de los microservicios (modelo_reportes, clasificador_reportes)
+*.db
+
 docs/reports
 
 /credentials
